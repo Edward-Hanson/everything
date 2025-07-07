@@ -15,10 +15,6 @@ Parameters:
     NoEcho: true
     Default: cloudbasedapp123
 
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: VPC ID for security group association
-
 
 
 Resources:
