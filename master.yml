@@ -422,7 +422,7 @@ Resources:
   ALBTestListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      LoadBalancerArn: !Ref ALB
       Port: 8080
       Protocol: HTTP
       DefaultActions:
