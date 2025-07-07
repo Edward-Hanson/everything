@@ -1,21 +1,68 @@
 {
   "family": "cloudbasedproject-1-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::343218213563:role/cloudbasedproject-1-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::343218213563:role/cloudbasedproject-1-ecs-task-role",
   "containerDefinitions": [
     {
       "name": "cloudbasedproject-1-container",
-      "image": "343218213563.dkr.ecr.eu-west-1.amazonaws.com/cloudbasedproject-1-repo:latest",
+      "image": "<IMAGE1_NAME>",
       "portMappings": [
         {
-          "containerPort": 2021
+          "containerPort": 2021,
+          "protocol": "tcp"
         }
       ],
-      "essential": true
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudbasedproject-1",
+          "awslogs-region": "eu-west-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "environment": [
+        {
+          "name": "AWS_REGION",
+          "value": "eu-west-1"
+        },
+        {
+          "name": "DB_HOST",
+          "value": "<DB_HOST>"
+        },
+        {
+          "name": "DB_PORT",
+          "value": "5432"
+        },
+        {
+          "name": "DB_NAME",
+          "value": "postgres"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DB_USERNAME",
+          "valueFrom": "<DB_SECRET_ARN>:username::"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "<DB_SECRET_ARN>:password::"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:2021/actuator/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 60
+      }
     }
-  ],
-  "cpu": "512",
-  "memory": "1024",
-  "networkMode": "awsvpc",
-  "requiresCompatibilities": ["FARGATE"],
-  "executionRoleArn": "arn:aws:iam::343218213563:role/cloudbasedproject-1-ecs-execution-role",
-  "taskRoleArn": "arn:aws:iam::343218213563:role/cloudbasedproject-1-ecs-task-role"
+  ]
 }

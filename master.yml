@@ -650,53 +650,50 @@ Resources:
 ##################################### Code pipeline ###########################################
 
   
-  CodePipelineRole:
-    Type: AWS::IAM::Role
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
     Properties:
-      RoleName: !Sub '${ProjectName}-codepipeline-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codepipeline.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: FullPipelineAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              # S3: Source and artifact access
-              - Effect: Allow
-                Action:
-                  - s3:*
-                Resource:
-                  - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}'
-                  - !Sub 'arn:aws:s3:::cloudbasedproject-1-artifact-343218213563-eu-west-1/*'
+      Name: !Sub '${ProjectName}-pipeline'
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactBucket
+      RestartExecutionOnUpdate: true
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                S3Bucket: !Ref CodePipelineArtifactBucket
+                S3ObjectKey: source.zip
+                PollForSourceChanges: false
+              RunOrder: 1
 
-              - Effect: Allow
-                Action:
-                  - ecs:RegisterTaskDefinition
-                  - ecs:DescribeServices
-                  - ecs:UpdateService
-                Resource: '*'
-
-              - Effect: Allow
-                Action:
-                  - codedeploy:*
-                Resource: '*'
-
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: '*'
-
-              - Effect: Allow
-                Action:
-                  - logs:*
-                  - cloudwatch:*
-                Resource: '*'
-
+        - Name: Deploy
+          Actions:
+            - Name: DeployToECS
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CodeDeployToECS
+                Version: 1
+              InputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                ApplicationName: !Sub '${ProjectName}-app'
+                DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
+                TaskDefinitionTemplateArtifact: SourceOutput
+                AppSpecTemplateArtifact: SourceOutput
+                AppSpecTemplatePath: appspec.yaml
+                TaskDefinitionTemplatePath: taskdef.json
+              RunOrder: 1
 
 
   CodePipelineArtifactBucket:
@@ -770,20 +767,62 @@ Resources:
 
 
 Outputs:
-  DatabaseEndpoint:
-    Description: Database endpoint
+  AccountId:
+    Description: AWS Account ID
+    Value: !Ref AWS::AccountId
+    Export:
+      Name: !Sub '${ProjectName}-AccountId'
+
+  Region:
+    Description: AWS Region
+    Value: !Ref AWS::Region
+    Export:
+      Name: !Sub '${ProjectName}-Region'
+
+  DatabaseHost:
+    Description: RDS Database Host
     Value: !GetAtt DatabaseInstance.Endpoint.Address
     Export:
-      Name: !Sub '${ProjectName}-db-endpoint'
-
-  DatabasePort:
-    Description: Database port
-    Value: !GetAtt DatabaseInstance.Endpoint.Port
-    Export:
-      Name: !Sub '${ProjectName}-db-port'
+      Name: !Sub '${ProjectName}-DatabaseHost'
 
   DatabaseSecretArn:
-    Description: Database secret ARN
+    Description: Database Secret ARN
     Value: !Ref DatabaseSecret
     Export:
-      Name: !Sub '${ProjectName}-db-secret-arn'
+      Name: !Sub '${ProjectName}-DatabaseSecretArn'
+
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub '${ProjectName}-PrivateSubnet1'
+
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub '${ProjectName}-PrivateSubnet2'
+
+  ECSSecurityGroupId:
+    Description: ECS Security Group ID
+    Value: !Ref ECSSecurityGroup
+    Export:
+      Name: !Sub '${ProjectName}-ECSSecurityGroup'
+
+  TaskExecutionRoleArn:
+    Description: Task Execution Role ARN
+    Value: !GetAtt TaskExecutionRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-TaskExecutionRoleArn'
+
+  TaskRoleArn:
+    Description: Task Role ARN
+    Value: !GetAtt TaskRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-TaskRoleArn'
+
+  ImageURI:
+    Description: Container Image URI
+    Value: !Sub '343218213563.dkr.ecr.eu-west-1.amazonaws.com/${ProjectName}-repo:${ImageTag}'
+    Export:
+      Name: !Sub '${ProjectName}-ImageURI'
