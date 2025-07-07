@@ -733,13 +733,11 @@ Resources:
               RunOrder: 1
 
             - Name: TaskDefSource
-              Actions:
-                - Name: TaskDefSource
-                  ActionTypeId:
-                    Category: Source
-                    Owner: AWS
-                    Provider: S3
-                    Version: 1
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: 1
               OutputArtifacts:
                 - Name: TaskDefArtifact
               Configuration:
