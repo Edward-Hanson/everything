@@ -676,64 +676,64 @@ Resources:
         Status: Enabled
 
   CodePipeline:
-  Type: AWS::CodePipeline::Pipeline
-  Properties:
-    Name: !Sub '${ProjectName}-pipeline'
-    RoleArn: !GetAtt CodePipelineRole.Arn
-    ArtifactStore:
-      Type: S3
-      Location: !Ref CodePipelineArtifactBucket
-    RestartExecutionOnUpdate: true
-    Stages:
-      - Name: Source
-        Actions:
-          - Name: AppSpecSource
-            ActionTypeId:
-              Category: Source
-              Owner: AWS
-              Provider: S3
-              Version: 1
-            OutputArtifacts:
-              - Name: AppSpecArtifact
-            Configuration:
-              S3Bucket: !Ref CodePipelineArtifactBucket
-              S3ObjectKey: appspec.yaml
-              PollForSourceChanges: false
-            RunOrder: 1
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub '${ProjectName}-pipeline'
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactBucket
+      RestartExecutionOnUpdate: true
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: AppSpecSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              OutputArtifacts:
+                - Name: AppSpecArtifact
+              Configuration:
+                S3Bucket: !Ref CodePipelineArtifactBucket
+                S3ObjectKey: appspec.yaml
+                PollForSourceChanges: false
+              RunOrder: 1
 
-          - Name: TaskDefSource
-            ActionTypeId:
-              Category: Source
-              Owner: AWS
-              Provider: S3
-              Version: 1
-            OutputArtifacts:
-              - Name: TaskDefArtifact
-            Configuration:
-              S3Bucket: !Ref CodePipelineArtifactBucket
-              S3ObjectKey: taskdef.json
-              PollForSourceChanges: false
-            RunOrder: 1
+            - Name: TaskDefSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              OutputArtifacts:
+                - Name: TaskDefArtifact
+              Configuration:
+                S3Bucket: !Ref CodePipelineArtifactBucket
+                S3ObjectKey: taskdef.json
+                PollForSourceChanges: false
+              RunOrder: 1
 
-      - Name: Deploy
-        Actions:
-          - Name: DeployToECS
-            ActionTypeId:
-              Category: Deploy
-              Owner: AWS
-              Provider: CodeDeployToECS
-              Version: 1
-            InputArtifacts:
-              - Name: AppSpecArtifact
-              - Name: TaskDefArtifact
-            Configuration:
-              ApplicationName: !Sub '${ProjectName}-codedeploy-app'
-              DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
-              TaskDefinitionTemplateArtifact: TaskDefArtifact
-              TaskDefinitionTemplatePath: taskdef.json
-              AppSpecTemplateArtifact: AppSpecArtifact
-              AppSpecTemplatePath: appspec.yaml
-            RunOrder: 1
+        - Name: Deploy
+          Actions:
+            - Name: DeployToECS
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CodeDeployToECS
+                Version: 1
+              InputArtifacts:
+                - Name: AppSpecArtifact
+                - Name: TaskDefArtifact
+              Configuration:
+                ApplicationName: !Sub '${ProjectName}-codedeploy-app'
+                DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
+                TaskDefinitionTemplateArtifact: TaskDefArtifact
+                TaskDefinitionTemplatePath: taskdef.json
+                AppSpecTemplateArtifact: AppSpecArtifact
+                AppSpecTemplatePath: appspec.yaml
+              RunOrder: 1
 
 
 
