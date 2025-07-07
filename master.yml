@@ -669,9 +669,7 @@ Resources:
               # S3: Source and artifact access
               - Effect: Allow
                 Action:
-                  - s3:GetObject
-                  - s3:GetObjectVersion
-                  - s3:PutObject
+                  - s3:*
                 Resource:
                   - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}'
                   - !Sub 'arn:aws:s3:::cloudbasedproject-1-artifact-343218213563-eu-west-1/*'
