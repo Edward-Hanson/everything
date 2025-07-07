@@ -291,6 +291,10 @@ Resources:
       RouteTableIds:
         - !Ref PrivateRouteTable1
         - !Ref PrivateRouteTable2
+        - !Ref DatabaseRouteTable
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-s3-vpce'
 
 
 
@@ -329,6 +333,7 @@ Resources:
 #       DBInstanceClass: db.t3.micro
 #       Engine: postgres
 #       EngineVersion: '17.5'
+#       Multi
 #       MasterUsername: !Ref DatabaseUsername
 #       MasterUserPassword: !Ref DatabasePassword
 #       AllocatedStorage: 20
