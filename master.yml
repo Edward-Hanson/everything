@@ -651,54 +651,57 @@ Resources:
 
   
   CodePipelineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-codepipeline-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codepipeline.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: CodePipelineInlinePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:GetObjectVersion
-                  - s3:PutObject
-                Resource:
-                  - !GetAtt CodePipelineArtifactBucket.Arn
-                  - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}/*'
+  Type: AWS::IAM::Role
+  Properties:
+    RoleName: !Sub '${ProjectName}-codepipeline-role'
+    AssumeRolePolicyDocument:
+      Version: '2012-10-17'
+      Statement:
+        - Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: sts:AssumeRole
+    Policies:
+      - PolicyName: CodePipelinePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectVersion
+                - s3:PutObject
+              Resource:
+                - !GetAtt CodePipelineArtifactBucket.Arn
+                - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}/*'
 
-              - Effect: Allow
-                Action:
-                  - codebuild:*
-                  - codedeploy:*
-                  - codedeploy:Get*
-                  - codedeploy:CreateDeployment
-                  - codedeploy:RegisterApplicationRevision
-                Resource: "*"
+            - Effect: Allow
+              Action:
+                - codedeploy:*
+              Resource: "*"
 
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: "*"
+            - Effect: Allow
+              Action:
+                - codepipeline:*
+              Resource: "*"
 
-              - Effect: Allow
-                Action:
-                  - ecs:*
-                Resource: "*"
+            - Effect: Allow
+              Action:
+                - ecs:RegisterTaskDefinition
+                - ecs:UpdateService
+                - ecs:DescribeServices
+              Resource: "*"
 
-              - Effect: Allow
-                Action:
-                  - logs:*
-                  - cloudwatch:*
-                Resource: "*"
+            - Effect: Allow
+              Action:
+                - iam:PassRole
+              Resource: "*"
+
+            - Effect: Allow
+              Action:
+                - logs:*
+                - cloudwatch:*
+              Resource: "*"
 
 
   CodePipelineArtifactBucket:
