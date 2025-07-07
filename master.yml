@@ -1,11 +1,19 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Master Stack to deploy CloudBasedProject infrastructure using nested stacks in proper order.
+Description: Master Stack to deploy CloudBasedProject infrastructure.
 
 Parameters:
   ProjectName:
     Type: String
     Default: cloudbasedproject-1
 
+  DatabaseUsername:
+    Type: String
+    Default: cloudbasedapp
+
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Default: cloudbasedapp123
 
 
 
@@ -222,75 +230,71 @@ Resources:
 
 # ################################ RDS Stack ##########################################
 
-#   DatabaseSubnetGroup:
-#     Type: AWS::RDS::DBSubnetGroup
-#     Properties:
-#       DBSubnetGroupName: !Sub '${ProjectName}-db-subnet-group'
-#       DBSubnetGroupDescription: Subnet group for RDS database
-#       SubnetIds:
-#         - !Ref DatabaseSubnet1
-#         - !Ref DatabaseSubnet2
-#       Tags:
-#         - Key: Name
-#           Value: !Sub '${ProjectName}-db-subnet-group'
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub '${ProjectName}-db-subnet-group'
+      DBSubnetGroupDescription: DB subnet group for RDS
+      SubnetIds:
+        - !Ref DatabaseSubnet1
+        - !Ref DatabaseSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-subnet-group'
 
-#   DatabaseParameterGroup:
-#     Type: AWS::RDS::DBParameterGroup
-#     Properties:
-#       Family: postgres17
-#       Description: Parameter group for PostgreSQL 17
-#       Parameters:
-#         shared_preload_libraries: pg_stat_statements
-#         log_statement: all
-#         log_min_duration_statement: 1000
-#       Tags:
-#         - Key: Name
-#           Value: !Sub '${ProjectName}-db-parameter-group'
+  DatabaseParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Family: postgres17
+      Description: PostgreSQL 17 parameter group
+      Parameters:
+        log_min_duration_statement: 500
+        log_statement: all
+        shared_preload_libraries: pg_stat_statements
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-param-group'
 
-#   DatabaseInstance:
-#     Type: AWS::RDS::DBInstance
-#     DeletionPolicy: Snapshot
-#     Properties:
-#       DBInstanceIdentifier: !Sub '${ProjectName}-database'
-#       DBInstanceClass: db.t3.micro
-#       Engine: postgres
-#       EngineVersion: '17.5'
-#       Multi
-#       MasterUsername: !Ref DatabaseUsername
-#       MasterUserPassword: !Ref DatabasePassword
-#       AllocatedStorage: 20
-#       StorageType: gp2
-#       StorageEncrypted: true
-#       DBSubnetGroupName: !Ref DatabaseSubnetGroup
-#       DBParameterGroupName: !Ref DatabaseParameterGroup
-#       VPCSecurityGroups:
-#         - !Ref DatabaseSecurityGroup
-#       BackupRetentionPeriod: 7
-#       PreferredBackupWindow: '03:00-04:00'
-#       PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
-#       MultiAZ: false
-#       AutoMinorVersionUpgrade: true
-#       DeletionProtection: false
-#       Tags:
-#         - Key: Name
-#           Value: !Sub '${ProjectName}-database'
+  DatabaseInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-rds'
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      EngineVersion: 17.5
+      MasterUsername: !Ref DatabaseUsername
+      MasterUserPassword: !Ref DatabasePassword
+      AllocatedStorage: 20
+      StorageEncrypted: true
+      MultiAZ: true
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      DBParameterGroupName: !Ref DatabaseParameterGroup
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: '02:00-03:00'
+      PreferredMaintenanceWindow: 'sun:03:00-sun:04:00'
+      VPCSecurityGroups:
+        - Fn::ImportValue: !Sub '${ProjectName}-db-sg'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-rds'
 
-#   DatabaseSecret:
-#     Type: AWS::SecretsManager::Secret
-#     Properties:
-#       Name: cloudbasedproject-db-credential
-#       Description: Database credentials for Cloud Based Project
-#       SecretString: !Sub |
-#         {
-#           "username": "${DatabaseUsername}",
-#           "password": "${DatabasePassword}",
-#           "host": "${DatabaseInstance.Endpoint.Address}",
-#           "port": "5432",
-#           "dbname": "postgres"
-#         }
-#       Tags:
-#         - Key: Name
-#           Value: !Sub '${ProjectName}-db-credential'
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${ProjectName}-db-credentials'
+      Description: RDS credentials for PostgreSQL
+      SecretString: !Sub |
+        {
+          "username": "${DatabaseUsername}",
+          "password": "${DatabasePassword}",
+          "host": "${DatabaseInstance.Endpoint.Address}",
+          "port": "5432",
+          "dbname": "postgres"
+        }
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-secret'
 
 
 # ################################### ECS Stack ##########################################
