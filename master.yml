@@ -758,7 +758,7 @@ Resources:
                 - Name: AppSpecArtifact
                 - Name: TaskDefArtifact
               Configuration:
-                ApplicationName: !Sub '${ProjectName}-codedeploy-app'
+                ApplicationName: !Sub '${ProjectName}-app'
                 DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
                 TaskDefinitionTemplateArtifact: TaskDefArtifact
                 TaskDefinitionTemplatePath: taskdef.json
