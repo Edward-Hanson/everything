@@ -650,23 +650,23 @@ Resources:
 ##################################### Code pipeline ###########################################
 
   
-  # CodePipelineRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     RoleName: !Sub '${ProjectName}-pipeline-role'
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: codepipeline.amazonaws.com
-  #           Action: sts:AssumeRole
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/AWSCodeDeployFullAccess
-  #       - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-  #       - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
-  #       - arn:aws:iam::aws:policy/CloudWatchEventsFullAccess
-  #       - arn:aws:iam::aws:policy/AmazonS3FullAccess
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-pipeline-role'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodeDeployFullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchEventsFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
 
   CodePipelineArtifactBucket:
     Type: AWS::S3::Bucket
@@ -675,65 +675,84 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  # CodePipeline:
-  #   Type: AWS::CodePipeline::Pipeline
-  #   Properties:
-  #     RoleArn: !GetAtt CodePipelineRole.Arn
-  #     ArtifactStore:
-  #       Type: S3
-  #       Location: !Ref CodePipelineArtifactBucket
-  #     Name: !Sub '${ProjectName}-pipeline'
-  #     RestartExecutionOnUpdate: true
-  #     Stages:
-  #       - Name: Source
-  #         Actions:
-  #           - Name: ECRSource
-  #             ActionTypeId:
-  #               Category: Source
-  #               Owner: AWS
-  #               Provider: ECR
-  #               Version: 1
-  #             OutputArtifacts:
-  #               - Name: SourceOutput
-  #             Configuration:
-  #               RepositoryName: !Sub '${ProjectName}-repo'
-  #               ImageTag: latest
-  #             RunOrder: 1
+  CodePipeline:
+  Type: AWS::CodePipeline::Pipeline
+  Properties:
+    Name: !Sub '${ProjectName}-pipeline'
+    RoleArn: !GetAtt CodePipelineRole.Arn
+    ArtifactStore:
+      Type: S3
+      Location: !Ref CodePipelineArtifactBucket
+    RestartExecutionOnUpdate: true
+    Stages:
+      - Name: Source
+        Actions:
+          - Name: AppSpecSource
+            ActionTypeId:
+              Category: Source
+              Owner: AWS
+              Provider: S3
+              Version: 1
+            OutputArtifacts:
+              - Name: AppSpecArtifact
+            Configuration:
+              S3Bucket: !Ref CodePipelineArtifactBucket
+              S3ObjectKey: appspec.yaml
+              PollForSourceChanges: false
+            RunOrder: 1
 
-  #       - Name: Deploy
-  #         Actions:
-  #           - Name: DeployToECS
-  #             ActionTypeId:
-  #               Category: Deploy
-  #               Owner: AWS
-  #               Provider: CodeDeployToECS
-  #               Version: 1
-  #             InputArtifacts:
-  #               - Name: SourceOutput
-  #             Configuration:
-  #               ApplicationName: !Sub '${ProjectName}-codedeploy-app'
-  #               DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
-  #               TaskDefinitionTemplateArtifact: SourceOutput
-  #               AppSpecTemplateArtifact: SourceOutput
-  #               AppSpecTemplatePath: appspec.yaml
-  #               TaskDefinitionTemplatePath: taskdef.json
-  #             RunOrder: 1  
+          - Name: TaskDefSource
+            ActionTypeId:
+              Category: Source
+              Owner: AWS
+              Provider: S3
+              Version: 1
+            OutputArtifacts:
+              - Name: TaskDefArtifact
+            Configuration:
+              S3Bucket: !Ref CodePipelineArtifactBucket
+              S3ObjectKey: taskdef.json
+              PollForSourceChanges: false
+            RunOrder: 1
 
-# Outputs:
-#   DatabaseEndpoint:
-#     Description: Database endpoint
-#     Value: !GetAtt DatabaseInstance.Endpoint.Address
-#     Export:
-#       Name: !Sub '${ProjectName}-db-endpoint'
+      - Name: Deploy
+        Actions:
+          - Name: DeployToECS
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: CodeDeployToECS
+              Version: 1
+            InputArtifacts:
+              - Name: AppSpecArtifact
+              - Name: TaskDefArtifact
+            Configuration:
+              ApplicationName: !Sub '${ProjectName}-codedeploy-app'
+              DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
+              TaskDefinitionTemplateArtifact: TaskDefArtifact
+              TaskDefinitionTemplatePath: taskdef.json
+              AppSpecTemplateArtifact: AppSpecArtifact
+              AppSpecTemplatePath: appspec.yaml
+            RunOrder: 1
 
-#   DatabasePort:
-#     Description: Database port
-#     Value: !GetAtt DatabaseInstance.Endpoint.Port
-#     Export:
-#       Name: !Sub '${ProjectName}-db-port'
 
-#   DatabaseSecretArn:
-#     Description: Database secret ARN
-#     Value: !Ref DatabaseSecret
-#     Export:
-#       Name: !Sub '${ProjectName}-db-secret-arn'
+
+
+Outputs:
+  DatabaseEndpoint:
+    Description: Database endpoint
+    Value: !GetAtt DatabaseInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${ProjectName}-db-endpoint'
+
+  DatabasePort:
+    Description: Database port
+    Value: !GetAtt DatabaseInstance.Endpoint.Port
+    Export:
+      Name: !Sub '${ProjectName}-db-port'
+
+  DatabaseSecretArn:
+    Description: Database secret ARN
+    Value: !Ref DatabaseSecret
+    Export:
+      Name: !Sub '${ProjectName}-db-secret-arn'
