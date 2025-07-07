@@ -646,6 +646,79 @@ Resources:
         DeploymentReadyOption:
           ActionOnTimeout: CONTINUE_DEPLOYMENT
 
+
+##################################### Code pipeline ###########################################
+
+  
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-pipeline-role'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodeDeployFullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchEventsFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  CodePipelineArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-artifact-${AWS::AccountId}-${AWS::Region}'
+      VersioningConfiguration:
+        Status: Enabled
+
+  # CodePipeline:
+  #   Type: AWS::CodePipeline::Pipeline
+  #   Properties:
+  #     RoleArn: !GetAtt CodePipelineRole.Arn
+  #     ArtifactStore:
+  #       Type: S3
+  #       Location: !Ref CodePipelineArtifactBucket
+  #     Name: !Sub '${ProjectName}-pipeline'
+  #     RestartExecutionOnUpdate: true
+  #     Stages:
+  #       - Name: Source
+  #         Actions:
+  #           - Name: ECRSource
+  #             ActionTypeId:
+  #               Category: Source
+  #               Owner: AWS
+  #               Provider: ECR
+  #               Version: 1
+  #             OutputArtifacts:
+  #               - Name: SourceOutput
+  #             Configuration:
+  #               RepositoryName: !Sub '${ProjectName}-repo'
+  #               ImageTag: latest
+  #             RunOrder: 1
+
+  #       - Name: Deploy
+  #         Actions:
+  #           - Name: DeployToECS
+  #             ActionTypeId:
+  #               Category: Deploy
+  #               Owner: AWS
+  #               Provider: CodeDeployToECS
+  #               Version: 1
+  #             InputArtifacts:
+  #               - Name: SourceOutput
+  #             Configuration:
+  #               ApplicationName: !Sub '${ProjectName}-codedeploy-app'
+  #               DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
+  #               TaskDefinitionTemplateArtifact: SourceOutput
+  #               AppSpecTemplateArtifact: SourceOutput
+  #               AppSpecTemplatePath: appspec.yaml
+  #               TaskDefinitionTemplatePath: taskdef.json
+  #             RunOrder: 1  
+
 # Outputs:
 #   DatabaseEndpoint:
 #     Description: Database endpoint
