@@ -1,0 +1,10 @@
+version: 1
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "cloudbasedproject-1-task"
+        LoadBalancerInfo:
+          ContainerName: "cloudbasedproject-1-container"
+          ContainerPort: 2021
+

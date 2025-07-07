@@ -650,23 +650,23 @@ Resources:
 ##################################### Code pipeline ###########################################
 
   
-  CodePipelineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-pipeline-role'
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codepipeline.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSCodeDeployFullAccess
-        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
-        - arn:aws:iam::aws:policy/CloudWatchEventsFullAccess
-        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+  # CodePipelineRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: !Sub '${ProjectName}-pipeline-role'
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: codepipeline.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/AWSCodeDeployFullAccess
+  #       - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+  #       - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+  #       - arn:aws:iam::aws:policy/CloudWatchEventsFullAccess
+  #       - arn:aws:iam::aws:policy/AmazonS3FullAccess
 
   CodePipelineArtifactBucket:
     Type: AWS::S3::Bucket

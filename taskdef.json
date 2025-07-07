@@ -1,0 +1,21 @@
+{
+  "family": "cloudbasedproject-1-task",
+  "containerDefinitions": [
+    {
+      "name": "cloudbasedproject-1-container",
+      "image": "343218213563.dkr.ecr.eu-west-1.amazonaws.com/cloudbasedproject-1-repo:latest",
+      "portMappings": [
+        {
+          "containerPort": 2021
+        }
+      ],
+      "essential": true
+    }
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "executionRoleArn": "arn:aws:iam::343218213563:role/cloudbasedproject-1-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::343218213563:role/cloudbasedproject-1-ecs-task-role"
+}
