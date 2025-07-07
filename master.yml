@@ -579,70 +579,72 @@ Resources:
 
   
 
-# ################################ CodeDeploy Stack ##########################################
+################################ CodeDeploy Stack ##########################################
 
 
-#   ECSCodeDeployApplication:
-#     Type: AWS::CodeDeploy::Application
-#     Properties:
-#       ApplicationName: !Sub '${ProjectName}-app'
-#       ComputePlatform: ECS
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !Sub '${ProjectName}-app'
+      ComputePlatform: ECS
 
 
-#   ECSCodeDeployRole:
-#     Type: AWS::IAM::Role
-#     Properties:
-#       RoleName: !Sub '${ProjectName}-codedeploy-role'
-#       AssumeRolePolicyDocument:
-#         Version: '2012-10-17'
-#         Statement:
-#           - Effect: Allow
-#             Principal:
-#               Service: codedeploy.amazonaws.com
-#             Action: sts:AssumeRole
-#       Policies:
-#         - PolicyName: CodeDeployECSInlinePolicy
-#           PolicyDocument:
-#             Version: '2012-10-17'
-#             Statement:
-#               - Effect: Allow
-#                 Action:
-#                   - ecs:*
-#                   - elasticloadbalancing:*
-#                   - codedeploy:*
-#                   - iam:PassRole
-#                 Resource: "*"
+  CodeDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-codedeploy-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codedeploy.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeDeployECSInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:*
+                  - elasticloadbalancing:*
+                  - codedeploy:*
+                  - iam:PassRole
+                  - cloudwatch:*
+                Resource: "*"
 
-#   BlueGreenDeployment:
-#     Type: AWS::CodeDeploy::DeploymentGroup
-#     Properties:
-#       ApplicationName: !Ref ECSCodeDeployApplication
-#       DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
-#       ServiceRoleArn: !GetAtt ECSCodeDeployRole.Arn
-#       DeploymentConfigName: CodeDeployDefault.ECSAllAtOnce
-#       DeploymentStyle:
-#         DeploymentType: BLUE_GREEN
-#         DeploymentOption: WITH_TRAFFIC_CONTROL
-#       ECSServices:
-#         - ClusterName: !Sub '${ProjectName}-cluster'
-#           ServiceName: !Sub '${ProjectName}-service'
-#       LoadBalancerInfo:
-#         TargetGroupPairInfoList:
-#           - TargetGroups:
-#               - Name: !Sub '${ProjectName}-blue-tg'
-#               - Name: !Sub '${ProjectName}-green-tg'
-#             ProdTrafficRoute:
-#               ListenerArns:
-#                 - !Ref ALBListener
-#             TestTrafficRoute:
-#               ListenerArns:
-#                 - !Ref ALBTestListener
-#       BlueGreenDeploymentConfiguration:
-#         TerminateBlueInstancesOnDeploymentSuccess:
-#           Action: TERMINATE
-#           TerminationWaitTimeInMinutes: 1
-#         DeploymentReadyOption:
-#           ActionOnTimeout: CONTINUE_DEPLOYMENT
+  ECSBlueGreenDeployment:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    DependsOn: CodeDeployApplication
+    Properties:
+      ApplicationName: !Ref CodeDeployApplication
+      DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
+      ServiceRoleArn: !GetAtt CodeDeployRole.Arn
+      DeploymentConfigName: CodeDeployDefault.ECSAllAtOnce
+      DeploymentStyle:
+        DeploymentType: BLUE_GREEN
+        DeploymentOption: WITH_TRAFFIC_CONTROL
+      ECSServices:
+        - ClusterName: !Sub '${ProjectName}-cluster'
+          ServiceName: !Sub '${ProjectName}-service'
+      LoadBalancerInfo:
+        TargetGroupPairInfoList:
+          - TargetGroups:
+              - Name: !Sub '${ProjectName}-blue-tg'
+              - Name: !Sub '${ProjectName}-green-tg'
+            ProdTrafficRoute:
+              ListenerArns:
+                - !Ref ALBListener
+            TestTrafficRoute:
+              ListenerArns:
+                - !Ref ALBTestListener
+      BlueGreenDeploymentConfiguration:
+        TerminateBlueInstancesOnDeploymentSuccess:
+          Action: TERMINATE
+          TerminationWaitTimeInMinutes: 1
+        DeploymentReadyOption:
+          ActionOnTimeout: CONTINUE_DEPLOYMENT
 
 # Outputs:
 #   DatabaseEndpoint:
