@@ -662,46 +662,43 @@ Resources:
               Service: codepipeline.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: CodePipelinePolicy
+        - PolicyName: FullPipelineAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              # S3: Source and artifact access
               - Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
                   - s3:PutObject
                 Resource:
-                  - !GetAtt CodePipelineArtifactBucket.Arn
+                  - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}'
                   - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}/*'
 
               - Effect: Allow
                 Action:
-                  - codedeploy:*
-                Resource: "*"
-
-              - Effect: Allow
-                Action:
-                  - codepipeline:*
-                Resource: "*"
-
-              - Effect: Allow
-                Action:
                   - ecs:RegisterTaskDefinition
-                  - ecs:UpdateService
                   - ecs:DescribeServices
-                Resource: "*"
+                  - ecs:UpdateService
+                Resource: '*'
+
+              - Effect: Allow
+                Action:
+                  - codedeploy:*
+                Resource: '*'
 
               - Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: "*"
+                Resource: '*'
 
               - Effect: Allow
                 Action:
                   - logs:*
                   - cloudwatch:*
-                Resource: "*"
+                Resource: '*'
+
 
 
   CodePipelineArtifactBucket:
