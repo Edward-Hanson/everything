@@ -11,10 +11,10 @@ Resources:
         NetworkConfiguration:
           AwsvpcConfiguration:
             Subnets:
-              - "subnet-xxxxx"  # Replace with your private subnet IDs
-              - "subnet-yyyyy"
+              - "subnet-04ad6a00dd70364a7"  
+              - "subnet-09a64709cf4a7c48b"
             SecurityGroups:
-              - "sg-zzzzz"     # Replace with your ECS security group ID
+              - "sg-0e51aa334c109d3ea"     
             AssignPublicIp: "DISABLED"
 Hooks:
   - BeforeInstall: 

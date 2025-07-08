@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "cloudbasedproject-1-container",
-      "image": "<IMAGE1_NAME>",
+      "image": "343218213563.dkr.ecr.eu-west-1.amazonaws.com/cloudbasedproject-1-repo:latest",
       "portMappings": [
         {
           "containerPort": 2021,
@@ -32,7 +32,7 @@
         },
         {
           "name": "DB_HOST",
-          "value": "<DB_HOST>"
+          "value": "cloudbasedproject-1-rds.c9q4ke0wo4ew.eu-west-1.rds.amazonaws.com"
         },
         {
           "name": "DB_PORT",
@@ -46,11 +46,11 @@
       "secrets": [
         {
           "name": "DB_USERNAME",
-          "valueFrom": "<DB_SECRET_ARN>:username::"
+          "valueFrom": "arn:aws:secretsmanager:eu-west-1:343218213563:secret:cloudbasedproject-1-db-credentials-rsxcX1:username::"
         },
         {
           "name": "DB_PASSWORD",
-          "valueFrom": "<DB_SECRET_ARN>:password::"
+          "valueFrom": "arn:aws:secretsmanager:eu-west-1:343218213563:secret:cloudbasedproject-1-db-credentials-rsxcX1:password::"
         }
       ],
       "healthCheck": {
