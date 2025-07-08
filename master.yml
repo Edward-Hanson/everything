@@ -697,6 +697,14 @@ Resources:
                   - cloudwatch:*
                 Resource: '*'
 
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: '*'
+
 
 
   CodePipelineArtifactBucket:
@@ -750,6 +758,201 @@ Resources:
                 AppSpecTemplatePath: appspec.yaml
                 TaskDefinitionTemplatePath: taskdef.json
               RunOrder: 1
+
+
+######################################## Event Bridge and Lambda function for automation( CD) ##########################################
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-lambda-execution-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodePipelineAndS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codepipeline:StartPipelineExecution
+                Resource: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:pipeline/${ProjectName}-pipeline'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub '${CodePipelineArtifactBucket}/*'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:DescribeRepositories
+                  - ecr:DescribeImages
+                Resource: '*'
+
+# EventBridge Role
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-eventbridge-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaInvokePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt PipelineTriggerFunction.Arn
+
+  # Lambda Function to Update Task Definition and Trigger Pipeline
+  PipelineTriggerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-pipeline-trigger'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import zipfile
+          import io
+          import os
+          
+          def lambda_handler(event, context):
+              print(f"Received event: {json.dumps(event)}")
+              
+              # Extract image details from EventBridge event
+              detail = event['detail']
+              repository_name = detail['repository-name']
+              image_tag = detail['image-tag']
+              registry_id = detail['registry-id']
+              
+              # Construct the full image URI
+              image_uri = f"{registry_id}.dkr.ecr.{os.environ['AWS_REGION']}.amazonaws.com/{repository_name}:{image_tag}"
+              
+              print(f"New image URI: {image_uri}")
+              
+              # Initialize AWS clients
+              s3 = boto3.client('s3')
+              codepipeline = boto3.client('codepipeline')
+              
+              bucket_name = os.environ['ARTIFACT_BUCKET']
+              project_name = os.environ['PROJECT_NAME']
+              
+              try:
+                  # Download existing source.zip from S3
+                  print("Downloading existing source.zip...")
+                  response = s3.get_object(Bucket=bucket_name, Key='source.zip')
+                  zip_content = response['Body'].read()
+                  
+                  # Extract files from ZIP
+                  with zipfile.ZipFile(io.BytesIO(zip_content), 'r') as zip_ref:
+                      # Read appspec.yaml
+                      appspec_content = zip_ref.read('appspec.yaml').decode('utf-8')
+                      
+                      # Read taskdef.json
+                      taskdef_content = zip_ref.read('taskdef.json').decode('utf-8')
+                  
+                  # Update taskdef.json with new image URI
+                  taskdef_json = json.loads(taskdef_content)
+                  for container in taskdef_json['containerDefinitions']:
+                      if container['name'] == f'{project_name}-container':
+                          container['image'] = image_uri
+                          print(f"Updated container image to: {image_uri}")
+                  
+                  # Create new ZIP with updated files
+                  zip_buffer = io.BytesIO()
+                  with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                      zip_file.writestr('appspec.yaml', appspec_content)
+                      zip_file.writestr('taskdef.json', json.dumps(taskdef_json, indent=2))
+                  
+                  # Upload updated ZIP to S3
+                  print("Uploading updated source.zip...")
+                  s3.put_object(
+                      Bucket=bucket_name,
+                      Key='source.zip',
+                      Body=zip_buffer.getvalue(),
+                      ContentType='application/zip'
+                  )
+                  
+                  # Trigger CodePipeline
+                  print("Starting pipeline execution...")
+                  pipeline_response = codepipeline.start_pipeline_execution(
+                      name=f'{project_name}-pipeline'
+                  )
+                  
+                  print(f"Pipeline execution started: {pipeline_response['pipelineExecutionId']}")
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': 'Pipeline triggered successfully',
+                          'imageUri': image_uri,
+                          'executionId': pipeline_response['pipelineExecutionId']
+                      })
+                  }
+                  
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({
+                          'error': str(e)
+                      })
+                  }
+      Environment:
+        Variables:
+          ARTIFACT_BUCKET: !Ref CodePipelineArtifactBucket
+          PROJECT_NAME: !Ref ProjectName
+
+
+  # EventBridge Rule for ECR Push Events
+  ECRPushEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-ecr-push-rule'
+      Description: 'Trigger pipeline when new image is pushed to ECR'
+      EventPattern:
+        source: ["aws.ecr"]
+        detail-type: ["ECR Image Action"]
+        detail:
+          action-type: ["PUSH"]
+          repository-name: [!Sub '${ProjectName}-repo']
+          result: ["SUCCESS"]
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt PipelineTriggerFunction.Arn
+          Id: "PipelineTriggerTarget"
+
+  # Lambda Permission for EventBridge
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PipelineTriggerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ECRPushEventRule.Arn
 
 
 
