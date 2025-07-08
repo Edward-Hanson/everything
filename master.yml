@@ -783,7 +783,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - codepipeline:StartPipelineExecution
-                Resource: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:pipeline/${ProjectName}-pipeline'
+                Resource: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${ProjectName}-pipeline'
               - Effect: Allow
                 Action:
                   - s3:GetObject
@@ -801,7 +801,7 @@ Resources:
                   - ecr:DescribeImages
                 Resource: '*'
 
-# EventBridge Role
+
   EventBridgeRole:
     Type: AWS::IAM::Role
     Properties:
@@ -993,7 +993,7 @@ Resources:
           ARTIFACT_BUCKET: !Ref CodePipelineArtifactBucket
           PROJECT_NAME: !Ref ProjectName
 
-  # EventBridge Rule for ECR Push Events
+
   ECRPushEventRule:
     Type: AWS::Events::Rule
     Properties:
