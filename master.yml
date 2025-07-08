@@ -666,7 +666,6 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # S3: Source and artifact access
               - Effect: Allow
                 Action:
                   - s3:*
@@ -906,25 +905,6 @@ Resources:
                           logger.info("Successfully read taskdef.json")
                   except Exception as e:
                       logger.error(f"Failed to extract files from ZIP: {str(e)}")
-                      raise
-                  
-                  # Update taskdef.json with new image URI
-                  try:
-                      taskdef_json = json.loads(taskdef_content)
-                      updated = False
-                      
-                      for container in taskdef_json['containerDefinitions']:
-                          if container['name'] == f'{project_name}-container':
-                              old_image = container.get('image', 'Not set')
-                              container['image'] = image_uri
-                              logger.info(f"Updated container image from '{old_image}' to '{image_uri}'")
-                              updated = True
-                      
-                      if not updated:
-                          logger.warning(f"No container named '{project_name}-container' found in task definition")
-                      
-                  except Exception as e:
-                      logger.error(f"Failed to update task definition: {str(e)}")
                       raise
                   
                   # Create new ZIP with updated files
