@@ -749,8 +749,6 @@ Resources:
                 AppSpecTemplateArtifact: SourceOutput
                 AppSpecTemplatePath: appspec.yaml
                 TaskDefinitionTemplatePath: taskdef.json
-                Image1ArtifactName: SourceOutput
-                Image1ImageURI: 343218213563.dkr.ecr.eu-west-1.amazonaws.com/cloudbasedproject-1-repo:latest
               RunOrder: 1
 
 
