@@ -706,52 +706,51 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  CodePipeline:
-    Type: AWS::CodePipeline::Pipeline
-    Properties:
-      Name: !Sub '${ProjectName}-pipeline'
-      RoleArn: !GetAtt CodePipelineRole.Arn
-      ArtifactStore:
-        Type: S3
-        Location: !Ref CodePipelineArtifactBucket
-      RestartExecutionOnUpdate: true
-      Stages:
-        - Name: Source
-          Actions:
-            - Name: SourceAction
-              ActionTypeId:
-                Category: Source
-                Owner: AWS
-                Provider: S3
-                Version: 1
-              OutputArtifacts:
-                - Name: SourceOutput
-              Configuration:
-                S3Bucket: !Ref CodePipelineArtifactBucket
-                S3ObjectKey: source.zip
-                PollForSourceChanges: false
-              RunOrder: 1
+  # CodePipeline:
+  #   Type: AWS::CodePipeline::Pipeline
+  #   Properties:
+  #     Name: !Sub '${ProjectName}-pipeline'
+  #     RoleArn: !GetAtt CodePipelineRole.Arn
+  #     ArtifactStore:
+  #       Type: S3
+  #       Location: !Ref CodePipelineArtifactBucket
+  #     RestartExecutionOnUpdate: true
+  #     Stages:
+  #       - Name: Source
+  #         Actions:
+  #           - Name: SourceAction
+  #             ActionTypeId:
+  #               Category: Source
+  #               Owner: AWS
+  #               Provider: S3
+  #               Version: 1
+  #             OutputArtifacts:
+  #               - Name: SourceOutput
+  #             Configuration:
+  #               S3Bucket: !Ref CodePipelineArtifactBucket
+  #               S3ObjectKey: source.zip
+  #               PollForSourceChanges: false
+  #             RunOrder: 1
 
-        - Name: Deploy
-          Actions:
-            - Name: DeployToECS
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: CodeDeployToECS
-                Version: 1
-              InputArtifacts:
-                - Name: SourceOutput
-              Configuration:
-                ApplicationName: !Sub '${ProjectName}-app'
-                DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
-                TaskDefinitionTemplateArtifact: SourceOutput
-                AppSpecTemplateArtifact: SourceOutput
-                AppSpecTemplatePath: appspec.yaml
-                TaskDefinitionTemplatePath: taskdef.json
-              RunOrder: 1
+  #       - Name: Deploy
+  #         Actions:
+  #           - Name: DeployToECS
+  #             ActionTypeId:
+  #               Category: Deploy
+  #               Owner: AWS
+  #               Provider: CodeDeployToECS
+  #               Version: 1
+  #             InputArtifacts:
+  #               - Name: SourceOutput
+  #             Configuration:
+  #               ApplicationName: !Sub '${ProjectName}-app'
+  #               DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
+  #               TaskDefinitionTemplateArtifact: SourceOutput
+  #               AppSpecTemplateArtifact: SourceOutput
+  #               AppSpecTemplatePath: appspec.yaml
+  #               TaskDefinitionTemplatePath: taskdef.json
+  #             RunOrder: 1
 
-# Add this section at the end of your CloudFormation template
 Outputs:
   AccountId:
     Description: AWS Account ID

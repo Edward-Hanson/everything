@@ -16,16 +16,3 @@ Resources:
             SecurityGroups:
               - "sg-0e51aa334c109d3ea"     
             AssignPublicIp: "DISABLED"
-Hooks:
-  - BeforeInstall: 
-      - Location: "scripts/stop_application.sh"
-        Timeout: 300
-        Runas: "root"
-  - AfterInstall:
-      - Location: "scripts/start_application.sh"
-        Timeout: 300
-        Runas: "root"
-  - ApplicationStart:
-      - Location: "scripts/validate_service.sh"
-        Timeout: 300
-        Runas: "root"
