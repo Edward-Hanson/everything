@@ -789,7 +789,8 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:DeleteObject
-                Resource: !Sub '${CodePipelineArtifactBucket}/*'
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}/*'
               - Effect: Allow
                 Action:
                   - ecr:GetAuthorizationToken
