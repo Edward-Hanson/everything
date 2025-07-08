@@ -823,7 +823,6 @@ Resources:
                   - lambda:InvokeFunction
                 Resource: !GetAtt PipelineTriggerFunction.Arn
 
-  # Lambda Function to Update Task Definition and Trigger Pipeline
   PipelineTriggerFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -839,94 +838,160 @@ Resources:
           import zipfile
           import io
           import os
+          import logging
           
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
           def lambda_handler(event, context):
-              print(f"Received event: {json.dumps(event)}")
-              
-              # Extract image details from EventBridge event
-              detail = event['detail']
-              repository_name = detail['repository-name']
-              image_tag = detail['image-tag']
-              registry_id = detail['registry-id']
-              
-              # Construct the full image URI
-              image_uri = f"{registry_id}.dkr.ecr.{os.environ['AWS_REGION']}.amazonaws.com/{repository_name}:{image_tag}"
-              
-              print(f"New image URI: {image_uri}")
-              
-              # Initialize AWS clients
-              s3 = boto3.client('s3')
-              codepipeline = boto3.client('codepipeline')
-              
-              bucket_name = os.environ['ARTIFACT_BUCKET']
-              project_name = os.environ['PROJECT_NAME']
+              logger.info(f"Lambda function started with event: {json.dumps(event, indent=2)}")
               
               try:
+                  # Validate event structure
+                  if 'detail' not in event:
+                      logger.error("Event does not contain 'detail' field")
+                      return {'statusCode': 400, 'body': json.dumps({'error': 'Invalid event structure'})}
+                  
+                  detail = event['detail']
+                  
+                  # Check if all required fields are present
+                  required_fields = ['repository-name', 'image-tag', 'registry-id']
+                  for field in required_fields:
+                      if field not in detail:
+                          logger.error(f"Missing required field: {field}")
+                          return {'statusCode': 400, 'body': json.dumps({'error': f'Missing field: {field}'})}
+                  
+                  repository_name = detail['repository-name']
+                  image_tag = detail['image-tag']
+                  registry_id = detail['registry-id']
+                  
+                  logger.info(f"Processing ECR push event for repository: {repository_name}, tag: {image_tag}")
+                  
+                  # Construct the full image URI
+                  image_uri = f"{registry_id}.dkr.ecr.{os.environ['AWS_REGION']}.amazonaws.com/{repository_name}:{image_tag}"
+                  logger.info(f"Constructed image URI: {image_uri}")
+                  
+                  # Initialize AWS clients
+                  s3 = boto3.client('s3')
+                  codepipeline = boto3.client('codepipeline')
+                  
+                  bucket_name = os.environ['ARTIFACT_BUCKET']
+                  project_name = os.environ['PROJECT_NAME']
+                  
+                  logger.info(f"Using S3 bucket: {bucket_name}, Project: {project_name}")
+                  
                   # Download existing source.zip from S3
-                  print("Downloading existing source.zip...")
-                  response = s3.get_object(Bucket=bucket_name, Key='source.zip')
-                  zip_content = response['Body'].read()
+                  logger.info("Downloading existing source.zip...")
+                  try:
+                      response = s3.get_object(Bucket=bucket_name, Key='source.zip')
+                      zip_content = response['Body'].read()
+                      logger.info("Successfully downloaded source.zip")
+                  except Exception as e:
+                      logger.error(f"Failed to download source.zip: {str(e)}")
+                      raise
                   
                   # Extract files from ZIP
-                  with zipfile.ZipFile(io.BytesIO(zip_content), 'r') as zip_ref:
-                      # Read appspec.yaml
-                      appspec_content = zip_ref.read('appspec.yaml').decode('utf-8')
-                      
-                      # Read taskdef.json
-                      taskdef_content = zip_ref.read('taskdef.json').decode('utf-8')
+                  try:
+                      with zipfile.ZipFile(io.BytesIO(zip_content), 'r') as zip_ref:
+                          # List files in ZIP
+                          file_list = zip_ref.namelist()
+                          logger.info(f"Files in ZIP: {file_list}")
+                          
+                          # Read appspec.yaml
+                          appspec_content = zip_ref.read('appspec.yaml').decode('utf-8')
+                          logger.info("Successfully read appspec.yaml")
+                          
+                          # Read taskdef.json
+                          taskdef_content = zip_ref.read('taskdef.json').decode('utf-8')
+                          logger.info("Successfully read taskdef.json")
+                  except Exception as e:
+                      logger.error(f"Failed to extract files from ZIP: {str(e)}")
+                      raise
                   
                   # Update taskdef.json with new image URI
-                  taskdef_json = json.loads(taskdef_content)
-                  for container in taskdef_json['containerDefinitions']:
-                      if container['name'] == f'{project_name}-container':
-                          container['image'] = image_uri
-                          print(f"Updated container image to: {image_uri}")
+                  try:
+                      taskdef_json = json.loads(taskdef_content)
+                      updated = False
+                      
+                      for container in taskdef_json['containerDefinitions']:
+                          if container['name'] == f'{project_name}-container':
+                              old_image = container.get('image', 'Not set')
+                              container['image'] = image_uri
+                              logger.info(f"Updated container image from '{old_image}' to '{image_uri}'")
+                              updated = True
+                      
+                      if not updated:
+                          logger.warning(f"No container named '{project_name}-container' found in task definition")
+                      
+                  except Exception as e:
+                      logger.error(f"Failed to update task definition: {str(e)}")
+                      raise
                   
                   # Create new ZIP with updated files
-                  zip_buffer = io.BytesIO()
-                  with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                      zip_file.writestr('appspec.yaml', appspec_content)
-                      zip_file.writestr('taskdef.json', json.dumps(taskdef_json, indent=2))
+                  try:
+                      zip_buffer = io.BytesIO()
+                      with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                          zip_file.writestr('appspec.yaml', appspec_content)
+                          zip_file.writestr('taskdef.json', json.dumps(taskdef_json, indent=2))
+                      logger.info("Successfully created new ZIP file")
+                  except Exception as e:
+                      logger.error(f"Failed to create new ZIP: {str(e)}")
+                      raise
                   
                   # Upload updated ZIP to S3
-                  print("Uploading updated source.zip...")
-                  s3.put_object(
-                      Bucket=bucket_name,
-                      Key='source.zip',
-                      Body=zip_buffer.getvalue(),
-                      ContentType='application/zip'
-                  )
+                  try:
+                      logger.info("Uploading updated source.zip...")
+                      s3.put_object(
+                          Bucket=bucket_name,
+                          Key='source.zip',
+                          Body=zip_buffer.getvalue(),
+                          ContentType='application/zip'
+                      )
+                      logger.info("Successfully uploaded updated source.zip")
+                  except Exception as e:
+                      logger.error(f"Failed to upload updated ZIP: {str(e)}")
+                      raise
                   
                   # Trigger CodePipeline
-                  print("Starting pipeline execution...")
-                  pipeline_response = codepipeline.start_pipeline_execution(
-                      name=f'{project_name}-pipeline'
-                  )
-                  
-                  print(f"Pipeline execution started: {pipeline_response['pipelineExecutionId']}")
-                  
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps({
-                          'message': 'Pipeline triggered successfully',
-                          'imageUri': image_uri,
-                          'executionId': pipeline_response['pipelineExecutionId']
-                      })
-                  }
-                  
+                  try:
+                      pipeline_name = f'{project_name}-pipeline'
+                      logger.info(f"Starting pipeline execution for: {pipeline_name}")
+                      
+                      pipeline_response = codepipeline.start_pipeline_execution(
+                          name=pipeline_name
+                      )
+                      
+                      execution_id = pipeline_response['pipelineExecutionId']
+                      logger.info(f"Pipeline execution started successfully: {execution_id}")
+                      
+                      return {
+                          'statusCode': 200,
+                          'body': json.dumps({
+                              'message': 'Pipeline triggered successfully',
+                              'imageUri': image_uri,
+                              'executionId': execution_id,
+                              'repository': repository_name,
+                              'imageTag': image_tag
+                          })
+                      }
+                      
+                  except Exception as e:
+                      logger.error(f"Failed to start pipeline execution: {str(e)}")
+                      raise
+                      
               except Exception as e:
-                  print(f"Error: {str(e)}")
+                  logger.error(f"Lambda function failed with error: {str(e)}")
                   return {
                       'statusCode': 500,
                       'body': json.dumps({
-                          'error': str(e)
+                          'error': str(e),
+                          'message': 'Lambda function execution failed'
                       })
                   }
       Environment:
         Variables:
           ARTIFACT_BUCKET: !Ref CodePipelineArtifactBucket
           PROJECT_NAME: !Ref ProjectName
-
 
   # EventBridge Rule for ECR Push Events
   ECRPushEventRule:
@@ -941,10 +1006,12 @@ Resources:
           action-type: ["PUSH"]
           repository-name: [!Sub '${ProjectName}-repo']
           result: ["SUCCESS"]
+          registry-id: [!Ref 'AWS::AccountId']
       State: ENABLED
       Targets:
         - Arn: !GetAtt PipelineTriggerFunction.Arn
           Id: "PipelineTriggerTarget"
+          RoleArn: !GetAtt EventBridgeRole.Arn
 
   # Lambda Permission for EventBridge
   LambdaInvokePermission:
