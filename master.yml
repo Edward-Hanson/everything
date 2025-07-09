@@ -799,6 +799,29 @@ Resources:
                   - ecr:DescribeRepositories
                   - ecr:DescribeImages
                 Resource: '*'
+  
+
+  EventBridgeLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-eventbridge-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaInvokePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt PipelineTriggerFunction.Arn
+
 
 
   EventBridgeRole:
@@ -903,6 +926,16 @@ Resources:
                           # Read taskdef.json
                           taskdef_content = zip_ref.read('taskdef.json').decode('utf-8')
                           logger.info("Successfully read taskdef.json")
+                          
+                          # Parse and update taskdef.json with new image URI
+                          taskdef_json = json.loads(taskdef_content)
+                          
+                          # Update the image URI in the task definition
+                          if 'containerDefinitions' in taskdef_json:
+                              for container in taskdef_json['containerDefinitions']:
+                                  container['image'] = image_uri
+                                  logger.info(f"Updated container image to: {image_uri}")
+                          
                   except Exception as e:
                       logger.error(f"Failed to extract files from ZIP: {str(e)}")
                       raise
@@ -986,12 +1019,11 @@ Resources:
           action-type: ["PUSH"]
           repository-name: [!Sub '${ProjectName}-repo']
           result: ["SUCCESS"]
-          registry-id: [!Ref 'AWS::AccountId']
       State: ENABLED
       Targets:
         - Arn: !GetAtt PipelineTriggerFunction.Arn
           Id: "PipelineTriggerTarget"
-          RoleArn: !GetAtt EventBridgeRole.Arn
+          RoleArn: !GetAtt EventBridgeLambdaRole.Arn
 
   # Lambda Permission for EventBridge
   LambdaInvokePermission:
