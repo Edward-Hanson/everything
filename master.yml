@@ -1017,7 +1017,8 @@ Resources:
         detail-type: ["ECR Image Action"]
         detail:
           action-type: ["PUSH"]
-          repository-name: [!Sub '${ProjectName}-repo']
+          repository-name:
+            - "cloudbasedproject-1-repo"
           result: ["SUCCESS"]
       State: ENABLED
       Targets:
