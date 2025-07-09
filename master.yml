@@ -877,7 +877,7 @@ Resources:
                   detail = event['detail']
                   
                   # Check if all required fields are present
-                  required_fields = ['repository-name', 'image-tag', 'account']
+                  required_fields = ['repository-name', 'image-tag']
                   for field in required_fields:
                       if field not in detail:
                           logger.error(f"Missing required field: {field}")
@@ -885,7 +885,7 @@ Resources:
                   
                   repository_name = detail['repository-name']
                   image_tag = detail['image-tag']
-                  registry_id = detail["account"]
+                  registry_id = event["account"]
                   
                   logger.info(f"Processing ECR push event for repository: {repository_name}, tag: {image_tag}")
                   
