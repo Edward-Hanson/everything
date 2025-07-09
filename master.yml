@@ -866,7 +866,7 @@ Resources:
           logger.setLevel(logging.INFO)
 
           def lambda_handler(event, context):
-              logger.info(f"Lambda function started with event: {json.dumps(event, indent=2)}")
+              logger.info(f"Lambda function started with event: {json.dumps(event)}")
               
               try:
                   # Validate event structure
@@ -885,7 +885,7 @@ Resources:
                   
                   repository_name = detail['repository-name']
                   image_tag = detail['image-tag']
-                  registry_id = detail['registry-id']
+                  registry_id = detail["account"]
                   
                   logger.info(f"Processing ECR push event for repository: {repository_name}, tag: {image_tag}")
                   
