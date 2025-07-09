@@ -494,8 +494,8 @@ Resources:
                   - s3:DeleteObject
                   - s3:ListBucket
                 Resource:
-                  - !Sub 'arn:aws:s3:::${ProjectName}-bucket'
-                  - !Sub 'arn:aws:s3:::${ProjectName}-bucket/*'
+                  - arn:aws:s3:::cloudbasedproject-bucket-1
+                  - arn:aws:s3:::cloudbasedproject-bucket-1/*
 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
