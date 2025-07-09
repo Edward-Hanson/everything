@@ -1026,7 +1026,6 @@ Resources:
           Id: "PipelineTriggerTarget"
           RoleArn: !GetAtt EventBridgeLambdaRole.Arn
 
-  # Lambda Permission for EventBridge
   LambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
