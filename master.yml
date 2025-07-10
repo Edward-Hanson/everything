@@ -279,59 +279,59 @@ Resources:
 
 
 
-# # ################################ Security Groups Stack ##########################################
+################################ Security Groups Stack ##########################################
 
-#   ALBSecurityGroup:
-#     Type: AWS::EC2::SecurityGroup
-#     Properties:
-#       GroupName: !Sub '${ProjectName}-alb-sg'
-#       GroupDescription: Allow HTTP/HTTPS traffic from anywhere
-#       VpcId: !Ref VPC
-#       SecurityGroupIngress:
-#         - IpProtocol: tcp
-#           FromPort: 80
-#           ToPort: 80
-#           CidrIp: 0.0.0.0/0
-#         - IpProtocol: tcp
-#           FromPort: 443
-#           ToPort: 443
-#           CidrIp: 0.0.0.0/0
-#       SecurityGroupEgress:
-#         - IpProtocol: -1
-#           CidrIp: 0.0.0.0/0
-#       Tags:
-#         - Key: Name
-#           Value: !Sub '${ProjectName}-alb-sg'
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-alb-sg'
+      GroupDescription: Allow HTTP/HTTPS traffic from anywhere
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-alb-sg'
 
-#   ECSSecurityGroup:
-#     Type: AWS::EC2::SecurityGroup
-#     Properties:
-#       GroupName: !Sub '${ProjectName}-ecs-sg'
-#       GroupDescription: Allow traffic from ALB to ECS on port 2020
-#       VpcId: !Ref VPC
-#       SecurityGroupIngress:
-#         - IpProtocol: tcp
-#           FromPort: 2021
-#           ToPort: 2021
-#           SourceSecurityGroupId: !Ref ALBSecurityGroup
-#       SecurityGroupEgress:
-#         - IpProtocol: -1
-#           CidrIp: 0.0.0.0/0
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-ecs-sg'
+      GroupDescription: Allow traffic from ALB to ECS on port 2020
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2021
+          ToPort: 2021
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
 
-#   DatabaseSecurityGroup:
-#     Type: AWS::EC2::SecurityGroup
-#     Properties:
-#       GroupName: !Sub '${ProjectName}-db-sg'
-#       GroupDescription: Allow ECS tasks to access RDS PostgreSQL (5432)
-#       VpcId: !Ref VPC
-#       SecurityGroupIngress:
-#         - IpProtocol: tcp
-#           FromPort: 5432
-#           ToPort: 5432
-#           SourceSecurityGroupId: !Ref ECSSecurityGroup
-#       SecurityGroupEgress:
-#         - IpProtocol: -1
-#           CidrIp: 0.0.0.0/0
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-db-sg'
+      GroupDescription: Allow ECS tasks to access RDS PostgreSQL (5432)
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
 
 
 # # ################################ RDS Stack ##########################################
