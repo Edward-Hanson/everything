@@ -279,558 +279,558 @@ Resources:
 
 
 
-# ################################ Security Groups Stack ##########################################
+# # ################################ Security Groups Stack ##########################################
 
-  ALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: !Sub '${ProjectName}-alb-sg'
-      GroupDescription: Allow HTTP/HTTPS traffic from anywhere
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-alb-sg'
+#   ALBSecurityGroup:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupName: !Sub '${ProjectName}-alb-sg'
+#       GroupDescription: Allow HTTP/HTTPS traffic from anywhere
+#       VpcId: !Ref VPC
+#       SecurityGroupIngress:
+#         - IpProtocol: tcp
+#           FromPort: 80
+#           ToPort: 80
+#           CidrIp: 0.0.0.0/0
+#         - IpProtocol: tcp
+#           FromPort: 443
+#           ToPort: 443
+#           CidrIp: 0.0.0.0/0
+#       SecurityGroupEgress:
+#         - IpProtocol: -1
+#           CidrIp: 0.0.0.0/0
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ProjectName}-alb-sg'
 
-  ECSSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: !Sub '${ProjectName}-ecs-sg'
-      GroupDescription: Allow traffic from ALB to ECS on port 2020
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 2021
-          ToPort: 2021
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
+#   ECSSecurityGroup:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupName: !Sub '${ProjectName}-ecs-sg'
+#       GroupDescription: Allow traffic from ALB to ECS on port 2020
+#       VpcId: !Ref VPC
+#       SecurityGroupIngress:
+#         - IpProtocol: tcp
+#           FromPort: 2021
+#           ToPort: 2021
+#           SourceSecurityGroupId: !Ref ALBSecurityGroup
+#       SecurityGroupEgress:
+#         - IpProtocol: -1
+#           CidrIp: 0.0.0.0/0
 
-  DatabaseSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: !Sub '${ProjectName}-db-sg'
-      GroupDescription: Allow ECS tasks to access RDS PostgreSQL (5432)
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          SourceSecurityGroupId: !Ref ECSSecurityGroup
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-
-
-# ################################ RDS Stack ##########################################
-
-  DatabaseSubnetGroup:
-    Type: AWS::RDS::DBSubnetGroup
-    Properties:
-      DBSubnetGroupName: !Sub '${ProjectName}-db-subnet-group'
-      DBSubnetGroupDescription: DB subnet group for RDS
-      SubnetIds:
-        - !Ref DatabaseSubnet1
-        - !Ref DatabaseSubnet2
-      Tags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-db-subnet-group'
-
-  DatabaseParameterGroup:
-    Type: AWS::RDS::DBParameterGroup
-    Properties:
-      Family: postgres17
-      Description: PostgreSQL 17 parameter group
-      Parameters:
-        log_min_duration_statement: 500
-        log_statement: all
-        shared_preload_libraries: pg_stat_statements
-      Tags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-db-param-group'
-
-  DatabaseInstance:
-    Type: AWS::RDS::DBInstance
-    DeletionPolicy: Snapshot
-    Properties:
-      DBInstanceIdentifier: !Sub '${ProjectName}-rds'
-      DBInstanceClass: db.t3.micro
-      Engine: postgres
-      EngineVersion: 17.5
-      MasterUsername: !Ref DatabaseUsername
-      MasterUserPassword: !Ref DatabasePassword
-      AllocatedStorage: 20
-      StorageEncrypted: true
-      MultiAZ: true
-      DBSubnetGroupName: !Ref DatabaseSubnetGroup
-      DBParameterGroupName: !Ref DatabaseParameterGroup
-      BackupRetentionPeriod: 7
-      PreferredBackupWindow: '02:00-03:00'
-      PreferredMaintenanceWindow: 'sun:03:00-sun:04:00'
-      VPCSecurityGroups:
-        - !Ref DatabaseSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-rds'
-
-  DatabaseSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: !Sub '${ProjectName}-db-credentials'
-      Description: RDS credentials for PostgreSQL
-      SecretString: !Sub |
-        {
-          "username": "${DatabaseUsername}",
-          "password": "${DatabasePassword}",
-          "host": "${DatabaseInstance.Endpoint.Address}",
-          "port": "5432",
-          "dbname": "postgres"
-        }
-      Tags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-db-secret'
+#   DatabaseSecurityGroup:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupName: !Sub '${ProjectName}-db-sg'
+#       GroupDescription: Allow ECS tasks to access RDS PostgreSQL (5432)
+#       VpcId: !Ref VPC
+#       SecurityGroupIngress:
+#         - IpProtocol: tcp
+#           FromPort: 5432
+#           ToPort: 5432
+#           SourceSecurityGroupId: !Ref ECSSecurityGroup
+#       SecurityGroupEgress:
+#         - IpProtocol: -1
+#           CidrIp: 0.0.0.0/0
 
 
-# ################################### ECS Stack ##########################################
+# # ################################ RDS Stack ##########################################
+
+#   DatabaseSubnetGroup:
+#     Type: AWS::RDS::DBSubnetGroup
+#     Properties:
+#       DBSubnetGroupName: !Sub '${ProjectName}-db-subnet-group'
+#       DBSubnetGroupDescription: DB subnet group for RDS
+#       SubnetIds:
+#         - !Ref DatabaseSubnet1
+#         - !Ref DatabaseSubnet2
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ProjectName}-db-subnet-group'
+
+#   DatabaseParameterGroup:
+#     Type: AWS::RDS::DBParameterGroup
+#     Properties:
+#       Family: postgres17
+#       Description: PostgreSQL 17 parameter group
+#       Parameters:
+#         log_min_duration_statement: 500
+#         log_statement: all
+#         shared_preload_libraries: pg_stat_statements
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ProjectName}-db-param-group'
+
+#   DatabaseInstance:
+#     Type: AWS::RDS::DBInstance
+#     DeletionPolicy: Snapshot
+#     Properties:
+#       DBInstanceIdentifier: !Sub '${ProjectName}-rds'
+#       DBInstanceClass: db.t3.micro
+#       Engine: postgres
+#       EngineVersion: 17.5
+#       MasterUsername: !Ref DatabaseUsername
+#       MasterUserPassword: !Ref DatabasePassword
+#       AllocatedStorage: 20
+#       StorageEncrypted: true
+#       MultiAZ: true
+#       DBSubnetGroupName: !Ref DatabaseSubnetGroup
+#       DBParameterGroupName: !Ref DatabaseParameterGroup
+#       BackupRetentionPeriod: 7
+#       PreferredBackupWindow: '02:00-03:00'
+#       PreferredMaintenanceWindow: 'sun:03:00-sun:04:00'
+#       VPCSecurityGroups:
+#         - !Ref DatabaseSecurityGroup
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ProjectName}-rds'
+
+#   DatabaseSecret:
+#     Type: AWS::SecretsManager::Secret
+#     Properties:
+#       Name: !Sub '${ProjectName}-db-credentials'
+#       Description: RDS credentials for PostgreSQL
+#       SecretString: !Sub |
+#         {
+#           "username": "${DatabaseUsername}",
+#           "password": "${DatabasePassword}",
+#           "host": "${DatabaseInstance.Endpoint.Address}",
+#           "port": "5432",
+#           "dbname": "postgres"
+#         }
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ProjectName}-db-secret'
 
 
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/ecs/${ProjectName}'
-      RetentionInDays: 14
-
-  ALB:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: !Sub '${ProjectName}-alb'
-      Scheme: internet-facing
-      Type: application
-      Subnets:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-      SecurityGroups:
-        - !Ref ALBSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-alb'
-
-  BlueTG:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: !Sub '${ProjectName}-blue-tg'
-      Port: 2021
-      Protocol: HTTP
-      VpcId: !Ref VPC
-      TargetType: ip
-      HealthCheckPath: /actuator/health
-      HealthCheckProtocol: HTTP
-      HealthCheckPort: 2021
-      Matcher:
-        HttpCode: 200
-
-  GreenTG:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: !Sub '${ProjectName}-green-tg'
-      Port: 2021
-      Protocol: HTTP
-      VpcId: !Ref VPC
-      TargetType: ip
-      HealthCheckPath: /actuator/health
-      HealthCheckProtocol: HTTP
-      HealthCheckPort: 2021
-      Matcher:
-        HttpCode: 200
+# # ################################### ECS Stack ##########################################
 
 
-  ALBListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref ALB
-      Port: 80
-      Protocol: HTTP
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref BlueTG
+#   LogGroup:
+#     Type: AWS::Logs::LogGroup
+#     Properties:
+#       LogGroupName: !Sub '/ecs/${ProjectName}'
+#       RetentionInDays: 14
+
+#   ALB:
+#     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+#     Properties:
+#       Name: !Sub '${ProjectName}-alb'
+#       Scheme: internet-facing
+#       Type: application
+#       Subnets:
+#         - !Ref PublicSubnet1
+#         - !Ref PublicSubnet2
+#       SecurityGroups:
+#         - !Ref ALBSecurityGroup
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ProjectName}-alb'
+
+#   BlueTG:
+#     Type: AWS::ElasticLoadBalancingV2::TargetGroup
+#     Properties:
+#       Name: !Sub '${ProjectName}-blue-tg'
+#       Port: 2021
+#       Protocol: HTTP
+#       VpcId: !Ref VPC
+#       TargetType: ip
+#       HealthCheckPath: /actuator/health
+#       HealthCheckProtocol: HTTP
+#       HealthCheckPort: 2021
+#       Matcher:
+#         HttpCode: 200
+
+#   GreenTG:
+#     Type: AWS::ElasticLoadBalancingV2::TargetGroup
+#     Properties:
+#       Name: !Sub '${ProjectName}-green-tg'
+#       Port: 2021
+#       Protocol: HTTP
+#       VpcId: !Ref VPC
+#       TargetType: ip
+#       HealthCheckPath: /actuator/health
+#       HealthCheckProtocol: HTTP
+#       HealthCheckPort: 2021
+#       Matcher:
+#         HttpCode: 200
 
 
-  ALBTestListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref ALB
-      Port: 8080
-      Protocol: HTTP
-      DefaultActions:
-        - Type: fixed-response
-          FixedResponseConfig:
-            StatusCode: 404
-            ContentType: text/plain
-            MessageBody: "No default test target group. CodeDeploy owns this listener."
+#   ALBListener:
+#     Type: AWS::ElasticLoadBalancingV2::Listener
+#     Properties:
+#       LoadBalancerArn: !Ref ALB
+#       Port: 80
+#       Protocol: HTTP
+#       DefaultActions:
+#         - Type: forward
+#           TargetGroupArn: !Ref BlueTG
 
 
-  ECSCluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: !Sub '${ProjectName}-cluster'
-      CapacityProviders: [FARGATE, FARGATE_SPOT]
-      DefaultCapacityProviderStrategy:
-        - CapacityProvider: FARGATE
-          Weight: 1
-        - CapacityProvider: FARGATE_SPOT
-          Weight: 4
-      ClusterSettings:
-        - Name: containerInsights
-          Value: enabled
+#   ALBTestListener:
+#     Type: AWS::ElasticLoadBalancingV2::Listener
+#     Properties:
+#       LoadBalancerArn: !Ref ALB
+#       Port: 8080
+#       Protocol: HTTP
+#       DefaultActions:
+#         - Type: fixed-response
+#           FixedResponseConfig:
+#             StatusCode: 404
+#             ContentType: text/plain
+#             MessageBody: "No default test target group. CodeDeploy owns this listener."
 
 
-  TaskExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-ecs-execution-role'
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-      Policies:
-        - PolicyName: AllowSecretsAccess
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: secretsmanager:GetSecretValue
-                Resource:
-                  - !Ref DatabaseSecret
-
-  TaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-ecs-task-role'
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: S3Access
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                  - s3:ListBucket
-                Resource:
-                  - arn:aws:s3:::cloudbasedproject-bucket-1
-                  - arn:aws:s3:::cloudbasedproject-bucket-1/*
-
-  TaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Sub '${ProjectName}-task'
-      NetworkMode: awsvpc
-      RequiresCompatibilities: 
-        - FARGATE
-      Cpu: 512
-      Memory: 1024
-      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
-      TaskRoleArn: !GetAtt TaskRole.Arn
-      ContainerDefinitions:
-        - Name: !Sub '${ProjectName}-container'
-          Image: !Sub '343218213563.dkr.ecr.eu-west-1.amazonaws.com/${ProjectName}-repo:${ImageTag}'
-          PortMappings:
-            - ContainerPort: 2021
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: ecs
-          Environment:
-            - Name: AWS_REGION
-              Value: !Ref AWS::Region
-            - Name: DB_HOST
-              Value: !GetAtt DatabaseInstance.Endpoint.Address
-            - Name: DB_PORT
-              Value: 5432
-            - Name: DB_NAME
-              Value: postgres
-          Secrets:
-            - Name: DB_USERNAME
-              ValueFrom: !Sub 
-                - '${SecretArn}:username::'
-                - SecretArn: !Ref DatabaseSecret
-            - Name: DB_PASSWORD
-              ValueFrom: !Sub 
-                - '${SecretArn}:password::'
-                - SecretArn: !Ref DatabaseSecret
-          HealthCheck:
-            Command: 
-              - CMD-SHELL
-              - "curl -f http://localhost:2021/actuator/health || exit 1"
-            Interval: 30
-            Timeout: 10
-            Retries: 3
-            StartPeriod: 60
-      Tags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-task'
+#   ECSCluster:
+#     Type: AWS::ECS::Cluster
+#     Properties:
+#       ClusterName: !Sub '${ProjectName}-cluster'
+#       CapacityProviders: [FARGATE, FARGATE_SPOT]
+#       DefaultCapacityProviderStrategy:
+#         - CapacityProvider: FARGATE
+#           Weight: 1
+#         - CapacityProvider: FARGATE_SPOT
+#           Weight: 4
+#       ClusterSettings:
+#         - Name: containerInsights
+#           Value: enabled
 
 
-  ECSService:
-    Type: AWS::ECS::Service
-    DependsOn: 
-      - ALBListener
-      - ALBTestListener
-    Properties:
-      ServiceName: !Sub '${ProjectName}-service'
-      LaunchType: FARGATE
-      Cluster: !Ref ECSCluster
-      DesiredCount: 2
-      TaskDefinition: !Ref TaskDefinition
-      DeploymentController:
-        Type: CODE_DEPLOY
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
-          Subnets:
-            - !Ref PrivateSubnet1
-            - !Ref PrivateSubnet2
-          SecurityGroups:
-            - !Ref ECSSecurityGroup
-      LoadBalancers:  
-        - ContainerName: !Sub '${ProjectName}-container'
-          ContainerPort: 2021
-          TargetGroupArn: !Ref BlueTG  
+#   TaskExecutionRole:
+#     Type: AWS::IAM::Role
+#     Properties:
+#       RoleName: !Sub '${ProjectName}-ecs-execution-role'
+#       AssumeRolePolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: Allow
+#             Principal:
+#               Service: ecs-tasks.amazonaws.com
+#             Action: sts:AssumeRole
+#       ManagedPolicyArns:
+#         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+#       Policies:
+#         - PolicyName: AllowSecretsAccess
+#           PolicyDocument:
+#             Version: "2012-10-17"
+#             Statement:
+#               - Effect: Allow
+#                 Action: secretsmanager:GetSecretValue
+#                 Resource:
+#                   - !Ref DatabaseSecret
+
+#   TaskRole:
+#     Type: AWS::IAM::Role
+#     Properties:
+#       RoleName: !Sub '${ProjectName}-ecs-task-role'
+#       AssumeRolePolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: Allow
+#             Principal:
+#               Service: ecs-tasks.amazonaws.com
+#             Action: sts:AssumeRole
+#       Policies:
+#         - PolicyName: S3Access
+#           PolicyDocument:
+#             Version: "2012-10-17"
+#             Statement:
+#               - Effect: Allow
+#                 Action:
+#                   - s3:GetObject
+#                   - s3:PutObject
+#                   - s3:DeleteObject
+#                   - s3:ListBucket
+#                 Resource:
+#                   - arn:aws:s3:::cloudbasedproject-bucket-1
+#                   - arn:aws:s3:::cloudbasedproject-bucket-1/*
+
+#   TaskDefinition:
+#     Type: AWS::ECS::TaskDefinition
+#     Properties:
+#       Family: !Sub '${ProjectName}-task'
+#       NetworkMode: awsvpc
+#       RequiresCompatibilities: 
+#         - FARGATE
+#       Cpu: 512
+#       Memory: 1024
+#       ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+#       TaskRoleArn: !GetAtt TaskRole.Arn
+#       ContainerDefinitions:
+#         - Name: !Sub '${ProjectName}-container'
+#           Image: !Sub '343218213563.dkr.ecr.eu-west-1.amazonaws.com/${ProjectName}-repo:${ImageTag}'
+#           PortMappings:
+#             - ContainerPort: 2021
+#           LogConfiguration:
+#             LogDriver: awslogs
+#             Options:
+#               awslogs-group: !Ref LogGroup
+#               awslogs-region: !Ref AWS::Region
+#               awslogs-stream-prefix: ecs
+#           Environment:
+#             - Name: AWS_REGION
+#               Value: !Ref AWS::Region
+#             - Name: DB_HOST
+#               Value: !GetAtt DatabaseInstance.Endpoint.Address
+#             - Name: DB_PORT
+#               Value: 5432
+#             - Name: DB_NAME
+#               Value: postgres
+#           Secrets:
+#             - Name: DB_USERNAME
+#               ValueFrom: !Sub 
+#                 - '${SecretArn}:username::'
+#                 - SecretArn: !Ref DatabaseSecret
+#             - Name: DB_PASSWORD
+#               ValueFrom: !Sub 
+#                 - '${SecretArn}:password::'
+#                 - SecretArn: !Ref DatabaseSecret
+#           HealthCheck:
+#             Command: 
+#               - CMD-SHELL
+#               - "curl -f http://localhost:2021/actuator/health || exit 1"
+#             Interval: 30
+#             Timeout: 10
+#             Retries: 3
+#             StartPeriod: 60
+#       Tags:
+#         - Key: Name
+#           Value: !Sub '${ProjectName}-task'
+
+
+#   ECSService:
+#     Type: AWS::ECS::Service
+#     DependsOn: 
+#       - ALBListener
+#       - ALBTestListener
+#     Properties:
+#       ServiceName: !Sub '${ProjectName}-service'
+#       LaunchType: FARGATE
+#       Cluster: !Ref ECSCluster
+#       DesiredCount: 2
+#       TaskDefinition: !Ref TaskDefinition
+#       DeploymentController:
+#         Type: CODE_DEPLOY
+#       NetworkConfiguration:
+#         AwsvpcConfiguration:
+#           AssignPublicIp: DISABLED
+#           Subnets:
+#             - !Ref PrivateSubnet1
+#             - !Ref PrivateSubnet2
+#           SecurityGroups:
+#             - !Ref ECSSecurityGroup
+#       LoadBalancers:  
+#         - ContainerName: !Sub '${ProjectName}-container'
+#           ContainerPort: 2021
+#           TargetGroupArn: !Ref BlueTG  
 
 
   
 
-################################ CodeDeploy Stack ##########################################
+# ################################ CodeDeploy Stack ##########################################
 
 
-  CodeDeployApplication:
-    Type: AWS::CodeDeploy::Application
-    Properties:
-      ApplicationName: !Sub '${ProjectName}-app'
-      ComputePlatform: ECS
+#   CodeDeployApplication:
+#     Type: AWS::CodeDeploy::Application
+#     Properties:
+#       ApplicationName: !Sub '${ProjectName}-app'
+#       ComputePlatform: ECS
 
 
-  CodeDeployRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-codedeploy-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codedeploy.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: CodeDeployECSInlinePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecs:*
-                  - elasticloadbalancing:*
-                  - codedeploy:*
-                  - iam:PassRole
-                  - cloudwatch:*
-                Resource: "*"
+#   CodeDeployRole:
+#     Type: AWS::IAM::Role
+#     Properties:
+#       RoleName: !Sub '${ProjectName}-codedeploy-role'
+#       AssumeRolePolicyDocument:
+#         Version: '2012-10-17'
+#         Statement:
+#           - Effect: Allow
+#             Principal:
+#               Service: codedeploy.amazonaws.com
+#             Action: sts:AssumeRole
+#       Policies:
+#         - PolicyName: CodeDeployECSInlinePolicy
+#           PolicyDocument:
+#             Version: '2012-10-17'
+#             Statement:
+#               - Effect: Allow
+#                 Action:
+#                   - ecs:*
+#                   - elasticloadbalancing:*
+#                   - codedeploy:*
+#                   - iam:PassRole
+#                   - cloudwatch:*
+#                 Resource: "*"
 
-  ECSBlueGreenDeployment:
-    Type: AWS::CodeDeploy::DeploymentGroup
-    DependsOn: CodeDeployApplication
-    Properties:
-      ApplicationName: !Ref CodeDeployApplication
-      DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
-      ServiceRoleArn: !GetAtt CodeDeployRole.Arn
-      DeploymentConfigName: CodeDeployDefault.ECSAllAtOnce
-      DeploymentStyle:
-        DeploymentType: BLUE_GREEN
-        DeploymentOption: WITH_TRAFFIC_CONTROL
-      ECSServices:
-        - ClusterName: !Sub '${ProjectName}-cluster'
-          ServiceName: !Sub '${ProjectName}-service'
-      LoadBalancerInfo:
-        TargetGroupPairInfoList:
-          - TargetGroups:
-              - Name: !Sub '${ProjectName}-blue-tg'
-              - Name: !Sub '${ProjectName}-green-tg'
-            ProdTrafficRoute:
-              ListenerArns:
-                - !Ref ALBListener
-            TestTrafficRoute:
-              ListenerArns:
-                - !Ref ALBTestListener
-      BlueGreenDeploymentConfiguration:
-        TerminateBlueInstancesOnDeploymentSuccess:
-          Action: TERMINATE
-          TerminationWaitTimeInMinutes: 1
-        DeploymentReadyOption:
-          ActionOnTimeout: CONTINUE_DEPLOYMENT
+#   ECSBlueGreenDeployment:
+#     Type: AWS::CodeDeploy::DeploymentGroup
+#     DependsOn: CodeDeployApplication
+#     Properties:
+#       ApplicationName: !Ref CodeDeployApplication
+#       DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
+#       ServiceRoleArn: !GetAtt CodeDeployRole.Arn
+#       DeploymentConfigName: CodeDeployDefault.ECSAllAtOnce
+#       DeploymentStyle:
+#         DeploymentType: BLUE_GREEN
+#         DeploymentOption: WITH_TRAFFIC_CONTROL
+#       ECSServices:
+#         - ClusterName: !Sub '${ProjectName}-cluster'
+#           ServiceName: !Sub '${ProjectName}-service'
+#       LoadBalancerInfo:
+#         TargetGroupPairInfoList:
+#           - TargetGroups:
+#               - Name: !Sub '${ProjectName}-blue-tg'
+#               - Name: !Sub '${ProjectName}-green-tg'
+#             ProdTrafficRoute:
+#               ListenerArns:
+#                 - !Ref ALBListener
+#             TestTrafficRoute:
+#               ListenerArns:
+#                 - !Ref ALBTestListener
+#       BlueGreenDeploymentConfiguration:
+#         TerminateBlueInstancesOnDeploymentSuccess:
+#           Action: TERMINATE
+#           TerminationWaitTimeInMinutes: 1
+#         DeploymentReadyOption:
+#           ActionOnTimeout: CONTINUE_DEPLOYMENT
 
 
-##################################### Code pipeline ###########################################
+# ##################################### Code pipeline ###########################################
 
   
-  CodePipelineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-codepipeline-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codepipeline.amazonaws.com
-            Action: sts:AssumeRole
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: FullPipelineAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:*
-                Resource:
-                  - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}'
-                  - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}/*'
+#   CodePipelineRole:
+#     Type: AWS::IAM::Role
+#     Properties:
+#       RoleName: !Sub '${ProjectName}-codepipeline-role'
+#       AssumeRolePolicyDocument:
+#         Version: '2012-10-17'
+#         Statement:
+#           - Effect: Allow
+#             Principal:
+#               Service: codepipeline.amazonaws.com
+#             Action: sts:AssumeRole
+#           - Effect: Allow
+#             Principal:
+#               Service: events.amazonaws.com
+#             Action: sts:AssumeRole
+#       Policies:
+#         - PolicyName: FullPipelineAccess
+#           PolicyDocument:
+#             Version: '2012-10-17'
+#             Statement:
+#               - Effect: Allow
+#                 Action:
+#                   - s3:*
+#                 Resource:
+#                   - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}'
+#                   - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}/*'
 
-              - Effect: Allow
-                Action:
-                  - ecs:RegisterTaskDefinition
-                  - ecs:DescribeServices
-                  - ecs:UpdateService
-                Resource: '*'
+#               - Effect: Allow
+#                 Action:
+#                   - ecs:RegisterTaskDefinition
+#                   - ecs:DescribeServices
+#                   - ecs:UpdateService
+#                 Resource: '*'
 
-              - Effect: Allow
-                Action:
-                  - codedeploy:*
-                Resource: '*'
+#               - Effect: Allow
+#                 Action:
+#                   - codedeploy:*
+#                 Resource: '*'
 
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: '*'
+#               - Effect: Allow
+#                 Action:
+#                   - iam:PassRole
+#                 Resource: '*'
 
-              - Effect: Allow
-                Action:
-                  - logs:*
-                  - cloudwatch:*
-                Resource: '*'
+#               - Effect: Allow
+#                 Action:
+#                   - logs:*
+#                   - cloudwatch:*
+#                 Resource: '*'
 
-              - Effect: Allow
-                Action:
-                  - ecr:GetAuthorizationToken
-                  - ecr:BatchCheckLayerAvailability
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:BatchGetImage
-                Resource: '*'
-
-
+#               - Effect: Allow
+#                 Action:
+#                   - ecr:GetAuthorizationToken
+#                   - ecr:BatchCheckLayerAvailability
+#                   - ecr:GetDownloadUrlForLayer
+#                   - ecr:BatchGetImage
+#                 Resource: '*'
 
 
-  CodePipelineArtifactBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub '${ProjectName}-artifact-${AWS::AccountId}-${AWS::Region}'
-      VersioningConfiguration:
-        Status: Enabled
-
-  CodePipeline:
-    Type: AWS::CodePipeline::Pipeline
-    Properties:
-      Name: !Sub '${ProjectName}-pipeline'
-      RoleArn: !GetAtt CodePipelineRole.Arn
-      ArtifactStore:
-        Type: S3
-        Location: !Ref CodePipelineArtifactBucket
-      RestartExecutionOnUpdate: true
-      Stages:
-        - Name: Source
-          Actions:
-            - Name: SourceAction
-              ActionTypeId:
-                Category: Source
-                Owner: AWS
-                Provider: S3
-                Version: 1
-              OutputArtifacts:
-                - Name: SourceOutput
-              Configuration:
-                S3Bucket: !Ref CodePipelineArtifactBucket
-                S3ObjectKey: source.zip
-                PollForSourceChanges: false
-              RunOrder: 1
-
-        - Name: Deploy
-          Actions:
-            - Name: DeployToECS
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: CodeDeployToECS
-                Version: 1
-              InputArtifacts:
-                - Name: SourceOutput
-              Configuration:
-                ApplicationName: !Sub '${ProjectName}-app'
-                DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
-                TaskDefinitionTemplateArtifact: SourceOutput
-                AppSpecTemplateArtifact: SourceOutput
-                AppSpecTemplatePath: appspec.yaml
-                TaskDefinitionTemplatePath: taskdef.json
-              RunOrder: 1
 
 
-######################################## Event Bridge and Lambda function for automation( CD) ##########################################
+#   CodePipelineArtifactBucket:
+#     Type: AWS::S3::Bucket
+#     Properties:
+#       BucketName: !Sub '${ProjectName}-artifact-${AWS::AccountId}-${AWS::Region}'
+#       VersioningConfiguration:
+#         Status: Enabled
+
+#   CodePipeline:
+#     Type: AWS::CodePipeline::Pipeline
+#     Properties:
+#       Name: !Sub '${ProjectName}-pipeline'
+#       RoleArn: !GetAtt CodePipelineRole.Arn
+#       ArtifactStore:
+#         Type: S3
+#         Location: !Ref CodePipelineArtifactBucket
+#       RestartExecutionOnUpdate: true
+#       Stages:
+#         - Name: Source
+#           Actions:
+#             - Name: SourceAction
+#               ActionTypeId:
+#                 Category: Source
+#                 Owner: AWS
+#                 Provider: S3
+#                 Version: 1
+#               OutputArtifacts:
+#                 - Name: SourceOutput
+#               Configuration:
+#                 S3Bucket: !Ref CodePipelineArtifactBucket
+#                 S3ObjectKey: source.zip
+#                 PollForSourceChanges: false
+#               RunOrder: 1
+
+#         - Name: Deploy
+#           Actions:
+#             - Name: DeployToECS
+#               ActionTypeId:
+#                 Category: Deploy
+#                 Owner: AWS
+#                 Provider: CodeDeployToECS
+#                 Version: 1
+#               InputArtifacts:
+#                 - Name: SourceOutput
+#               Configuration:
+#                 ApplicationName: !Sub '${ProjectName}-app'
+#                 DeploymentGroupName: !Sub '${ProjectName}-deployment-group'
+#                 TaskDefinitionTemplateArtifact: SourceOutput
+#                 AppSpecTemplateArtifact: SourceOutput
+#                 AppSpecTemplatePath: appspec.yaml
+#                 TaskDefinitionTemplatePath: taskdef.json
+#               RunOrder: 1
 
 
-  ECRPushEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: !Sub '${ProjectName}-ecr-push-rule'
-      Description: 'Trigger pipeline when new image is pushed to ECR'
-      EventPattern:
-        source: ["aws.ecr"]
-        detail-type: ["ECR Image Action"]
-        detail:
-          action-type: ["PUSH"]
-          repository-name:
-            - !Sub "${ProjectName}-repo"
-          result: ["SUCCESS"]
-      State: ENABLED
-      Targets:
-        - Arn: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${ProjectName}-pipeline'
-          Id: "CodePipelineTarget"
-          RoleArn: !GetAtt CodePipelineRole.Arn
+# ######################################## Event Bridge and Lambda function for automation( CD) ##########################################
+
+
+#   ECRPushEventRule:
+#     Type: AWS::Events::Rule
+#     Properties:
+#       Name: !Sub '${ProjectName}-ecr-push-rule'
+#       Description: 'Trigger pipeline when new image is pushed to ECR'
+#       EventPattern:
+#         source: ["aws.ecr"]
+#         detail-type: ["ECR Image Action"]
+#         detail:
+#           action-type: ["PUSH"]
+#           repository-name:
+#             - !Sub "${ProjectName}-repo"
+#           result: ["SUCCESS"]
+#       State: ENABLED
+#       Targets:
+#         - Arn: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${ProjectName}-pipeline'
+#           Id: "CodePipelineTarget"
+#           RoleArn: !GetAtt CodePipelineRole.Arn
 
