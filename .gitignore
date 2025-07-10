@@ -1,2 +1,4 @@
 ./taskdef.json
 ./appspec.yaml
+/source.zip
+/source
