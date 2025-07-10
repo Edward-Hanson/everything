@@ -832,3 +832,63 @@ Resources:
           Id: "CodePipelineTarget"
           RoleArn: !GetAtt CodePipelineRole.Arn
 
+Outputs:
+  AccountId:
+    Description: AWS Account ID
+    Value: !Ref AWS::AccountId
+    Export:
+      Name: !Sub '${ProjectName}-AccountId'
+
+  Region:
+    Description: AWS Region
+    Value: !Ref AWS::Region
+    Export:
+      Name: !Sub '${ProjectName}-Region'
+
+  DatabaseHost:
+    Description: RDS Database Host
+    Value: !GetAtt DatabaseInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${ProjectName}-DatabaseHost'
+
+  DatabaseSecretArn:
+    Description: Database Secret ARN
+    Value: !Ref DatabaseSecret
+    Export:
+      Name: !Sub '${ProjectName}-DatabaseSecretArn'
+
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub '${ProjectName}-PrivateSubnet1'
+
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub '${ProjectName}-PrivateSubnet2'
+
+  ECSSecurityGroupId:
+    Description: ECS Security Group ID
+    Value: !Ref ECSSecurityGroup
+    Export:
+      Name: !Sub '${ProjectName}-ECSSecurityGroup'
+
+  TaskExecutionRoleArn:
+    Description: Task Execution Role ARN
+    Value: !GetAtt TaskExecutionRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-TaskExecutionRoleArn'
+
+  TaskRoleArn:
+    Description: Task Role ARN
+    Value: !GetAtt TaskRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-TaskRoleArn'
+
+  ImageURI:
+    Description: Container Image URI
+    Value: !Sub '343218213563.dkr.ecr.eu-west-1.amazonaws.com/${ProjectName}-repo:${ImageTag}'
+    Export:
+      Name: !Sub '${ProjectName}-ImageURI'
