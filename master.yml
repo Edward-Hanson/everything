@@ -219,7 +219,6 @@ Resources:
       SubnetId: !Ref DatabaseSubnet2
       RouteTableId: !Ref DBRouteTable
 
-  # S3 Gateway Endpoint
   S3VPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -229,6 +228,55 @@ Resources:
         - !Ref PrivateRouteTable1
         - !Ref PrivateRouteTable2
       VpcEndpointType: Gateway
+  
+
+  ECRApiVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.api
+      VpcId: !Ref VPC
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+
+
+  ECRDkrVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.dkr
+      VpcId: !Ref VPC
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+
+
+  VPCEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-vpc-endpoint-sg'
+      GroupDescription: Security group for VPC endpoints
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+          Description: Allow HTTPS from ECS tasks
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc-endpoint-sg'
+
 
 
 # ################################ Security Groups Stack ##########################################
@@ -661,6 +709,10 @@ Resources:
             Principal:
               Service: codepipeline.amazonaws.com
             Action: sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
       Policies:
         - PolicyName: FullPipelineAccess
           PolicyDocument:
@@ -671,7 +723,7 @@ Resources:
                   - s3:*
                 Resource:
                   - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}'
-                  - !Sub 'arn:aws:s3:::cloudbasedproject-1-artifact-343218213563-eu-west-1/*'
+                  - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}/*'
 
               - Effect: Allow
                 Action:
@@ -703,6 +755,7 @@ Resources:
                   - ecr:GetDownloadUrlForLayer
                   - ecr:BatchGetImage
                 Resource: '*'
+
 
 
 
@@ -761,251 +814,6 @@ Resources:
 
 ######################################## Event Bridge and Lambda function for automation( CD) ##########################################
 
-  LambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-lambda-execution-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: CodePipelineAndS3Access
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - codepipeline:StartPipelineExecution
-                Resource: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${ProjectName}-pipeline'
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                Resource: 
-                  - !Sub 'arn:aws:s3:::${CodePipelineArtifactBucket}/*'
-              - Effect: Allow
-                Action:
-                  - ecr:GetAuthorizationToken
-                  - ecr:BatchCheckLayerAvailability
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:BatchGetImage
-                  - ecr:DescribeRepositories
-                  - ecr:DescribeImages
-                Resource: '*'
-  
-
-  EventBridgeLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-eventbridge-lambda-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: LambdaInvokePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource: !GetAtt PipelineTriggerFunction.Arn
-
-
-
-  EventBridgeRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-eventbridge-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: LambdaInvokePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource: !GetAtt PipelineTriggerFunction.Arn
-
-  PipelineTriggerFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub '${ProjectName}-pipeline-trigger'
-      Runtime: python3.9
-      Handler: index.lambda_handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 60
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          import zipfile
-          import io
-          import os
-          import logging
-          
-          logger = logging.getLogger()
-          logger.setLevel(logging.INFO)
-
-          def lambda_handler(event, context):
-              logger.info(f"Lambda function started with event: {json.dumps(event)}")
-              
-              try:
-                  # Validate event structure
-                  if 'detail' not in event:
-                      logger.error("Event does not contain 'detail' field")
-                      return {'statusCode': 400, 'body': json.dumps({'error': 'Invalid event structure'})}
-                  
-                  detail = event['detail']
-                  
-                  # Check if all required fields are present
-                  required_fields = ['repository-name', 'image-tag']
-                  for field in required_fields:
-                      if field not in detail:
-                          logger.error(f"Missing required field: {field}")
-                          return {'statusCode': 400, 'body': json.dumps({'error': f'Missing field: {field}'})}
-                  
-                  repository_name = detail['repository-name']
-                  image_tag = detail['image-tag']
-                  registry_id = event["account"]
-                  
-                  logger.info(f"Processing ECR push event for repository: {repository_name}, tag: {image_tag}")
-                  
-                  # Construct the full image URI
-                  image_uri = f"{registry_id}.dkr.ecr.{os.environ['AWS_REGION']}.amazonaws.com/{repository_name}:{image_tag}"
-                  logger.info(f"Constructed image URI: {image_uri}")
-                  
-                  # Initialize AWS clients
-                  s3 = boto3.client('s3')
-                  codepipeline = boto3.client('codepipeline')
-                  
-                  bucket_name = os.environ['ARTIFACT_BUCKET']
-                  project_name = os.environ['PROJECT_NAME']
-                  
-                  logger.info(f"Using S3 bucket: {bucket_name}, Project: {project_name}")
-                  
-                  # Download existing source.zip from S3
-                  logger.info("Downloading existing source.zip...")
-                  try:
-                      response = s3.get_object(Bucket=bucket_name, Key='source.zip')
-                      zip_content = response['Body'].read()
-                      logger.info("Successfully downloaded source.zip")
-                  except Exception as e:
-                      logger.error(f"Failed to download source.zip: {str(e)}")
-                      raise
-                  
-                  # Extract files from ZIP
-                  try:
-                      with zipfile.ZipFile(io.BytesIO(zip_content), 'r') as zip_ref:
-                          # List files in ZIP
-                          file_list = zip_ref.namelist()
-                          logger.info(f"Files in ZIP: {file_list}")
-                          
-                          # Read appspec.yaml
-                          appspec_content = zip_ref.read('appspec.yaml').decode('utf-8')
-                          logger.info("Successfully read appspec.yaml")
-                          
-                          # Read taskdef.json
-                          taskdef_content = zip_ref.read('taskdef.json').decode('utf-8')
-                          logger.info("Successfully read taskdef.json")
-                          
-                          # Parse and update taskdef.json with new image URI
-                          taskdef_json = json.loads(taskdef_content)
-                          
-                          # Update the image URI in the task definition
-                          if 'containerDefinitions' in taskdef_json:
-                              for container in taskdef_json['containerDefinitions']:
-                                  container['image'] = image_uri
-                                  logger.info(f"Updated container image to: {image_uri}")
-                          
-                  except Exception as e:
-                      logger.error(f"Failed to extract files from ZIP: {str(e)}")
-                      raise
-                  
-                  # Create new ZIP with updated files
-                  try:
-                      zip_buffer = io.BytesIO()
-                      with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                          zip_file.writestr('appspec.yaml', appspec_content)
-                          zip_file.writestr('taskdef.json', json.dumps(taskdef_json, indent=2))
-                      logger.info("Successfully created new ZIP file")
-                  except Exception as e:
-                      logger.error(f"Failed to create new ZIP: {str(e)}")
-                      raise
-                  
-                  # Upload updated ZIP to S3
-                  try:
-                      logger.info("Uploading updated source.zip...")
-                      s3.put_object(
-                          Bucket=bucket_name,
-                          Key='source.zip',
-                          Body=zip_buffer.getvalue(),
-                          ContentType='application/zip'
-                      )
-                      logger.info("Successfully uploaded updated source.zip")
-                  except Exception as e:
-                      logger.error(f"Failed to upload updated ZIP: {str(e)}")
-                      raise
-                  
-                  # Trigger CodePipeline
-                  try:
-                      pipeline_name = f'{project_name}-pipeline'
-                      logger.info(f"Starting pipeline execution for: {pipeline_name}")
-                      
-                      pipeline_response = codepipeline.start_pipeline_execution(
-                          name=pipeline_name
-                      )
-                      
-                      execution_id = pipeline_response['pipelineExecutionId']
-                      logger.info(f"Pipeline execution started successfully: {execution_id}")
-                      
-                      return {
-                          'statusCode': 200,
-                          'body': json.dumps({
-                              'message': 'Pipeline triggered successfully',
-                              'imageUri': image_uri,
-                              'executionId': execution_id,
-                              'repository': repository_name,
-                              'imageTag': image_tag
-                          })
-                      }
-                      
-                  except Exception as e:
-                      logger.error(f"Failed to start pipeline execution: {str(e)}")
-                      raise
-                      
-              except Exception as e:
-                  logger.error(f"Lambda function failed with error: {str(e)}")
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': str(e),
-                          'message': 'Lambda function execution failed'
-                      })
-                  }
-      Environment:
-        Variables:
-          ARTIFACT_BUCKET: !Ref CodePipelineArtifactBucket
-          PROJECT_NAME: !Ref ProjectName
-
 
   ECRPushEventRule:
     Type: AWS::Events::Rule
@@ -1018,82 +826,11 @@ Resources:
         detail:
           action-type: ["PUSH"]
           repository-name:
-            - "cloudbasedproject-1-repo"
+            - !Sub "${ProjectName}-repo"
           result: ["SUCCESS"]
       State: ENABLED
       Targets:
-        - Arn: !GetAtt PipelineTriggerFunction.Arn
-          Id: "PipelineTriggerTarget"
-          RoleArn: !GetAtt EventBridgeLambdaRole.Arn
+        - Arn: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${ProjectName}-pipeline'
+          Id: "CodePipelineTarget"
+          RoleArn: !GetAtt CodePipelineRole.Arn
 
-  LambdaInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref PipelineTriggerFunction
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt ECRPushEventRule.Arn
-
-
-
-# Add this section at the end of your CloudFormation template
-Outputs:
-  AccountId:
-    Description: AWS Account ID
-    Value: !Ref AWS::AccountId
-    Export:
-      Name: !Sub '${ProjectName}-AccountId'
-
-  Region:
-    Description: AWS Region
-    Value: !Ref AWS::Region
-    Export:
-      Name: !Sub '${ProjectName}-Region'
-
-  DatabaseHost:
-    Description: RDS Database Host
-    Value: !GetAtt DatabaseInstance.Endpoint.Address
-    Export:
-      Name: !Sub '${ProjectName}-DatabaseHost'
-
-  DatabaseSecretArn:
-    Description: Database Secret ARN
-    Value: !Ref DatabaseSecret
-    Export:
-      Name: !Sub '${ProjectName}-DatabaseSecretArn'
-
-  PrivateSubnet1Id:
-    Description: Private Subnet 1 ID
-    Value: !Ref PrivateSubnet1
-    Export:
-      Name: !Sub '${ProjectName}-PrivateSubnet1'
-
-  PrivateSubnet2Id:
-    Description: Private Subnet 2 ID
-    Value: !Ref PrivateSubnet2
-    Export:
-      Name: !Sub '${ProjectName}-PrivateSubnet2'
-
-  ECSSecurityGroupId:
-    Description: ECS Security Group ID
-    Value: !Ref ECSSecurityGroup
-    Export:
-      Name: !Sub '${ProjectName}-ECSSecurityGroup'
-
-  TaskExecutionRoleArn:
-    Description: Task Execution Role ARN
-    Value: !GetAtt TaskExecutionRole.Arn
-    Export:
-      Name: !Sub '${ProjectName}-TaskExecutionRoleArn'
-
-  TaskRoleArn:
-    Description: Task Role ARN
-    Value: !GetAtt TaskRole.Arn
-    Export:
-      Name: !Sub '${ProjectName}-TaskRoleArn'
-
-  ImageURI:
-    Description: Container Image URI
-    Value: !Sub '343218213563.dkr.ecr.eu-west-1.amazonaws.com/${ProjectName}-repo:${ImageTag}'
-    Export:
-      Name: !Sub '${ProjectName}-ImageURI'
