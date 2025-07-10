@@ -763,6 +763,16 @@ Resources:
                   - ecr:BatchGetImage
                 Resource: '*'
 
+              - Effect: Allow
+                Action:
+                  - events:*
+                Resource: '*'
+
+              - Effect: Allow
+                Action: 
+                  - codepipeline:StartPipelineExecution
+                Resource: '*'
+
 
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -828,7 +838,7 @@ Resources:
           result: ["SUCCESS"]
       State: ENABLED
       Targets:
-        - Arn: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${ProjectName}-pipeline'
+        - Arn: !GetAtt CodePipeline.Arn
           Id: "CodePipelineTarget"
           RoleArn: !GetAtt CodePipelineRole.Arn
 
